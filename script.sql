@@ -9,21 +9,26 @@ CREATE POLICY "anon_select_clientes" ON clientes
   FOR SELECT TO anon
   USING (true);
 
--- 2. Permitir cliente logado ver seus próprios dados (pelo email)
+-- 2. Permitir cliente logado ver seus próprios dados
 CREATE POLICY "auth_select_own_cliente" ON clientes
   FOR SELECT TO authenticated
   USING (email = auth.email());
 
--- 3. Permitir cliente logado atualizar seu próprio email (cadastro)
+-- 3. Permitir cliente logado atualizar seu email (inclusive quando for nulo no primeiro cadastro)
+DROP POLICY IF EXISTS "auth_update_own_cliente" ON clientes;
 CREATE POLICY "auth_update_own_cliente" ON clientes
   FOR UPDATE TO authenticated
-  USING (email = auth.email())
+  USING (email IS NULL OR email = auth.email())
   WITH CHECK (email = auth.email());
 
--- 4. Permitir cliente logado ver mensalidades
+-- 4. Permitir cliente logado ver mensalidades vinculadas a ele
 CREATE POLICY "auth_select_mensalidades" ON mensalidades
   FOR SELECT TO authenticated
-  USING (true);
+  USING (
+    cliente_id IN (
+      SELECT id FROM clientes WHERE email = auth.email()
+    )
+  );
 
 -- 5. Permitir consulta pública da config do banco (usado no boleto)
 CREATE POLICY "anon_select_config_banco" ON config_banco
