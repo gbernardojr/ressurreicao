@@ -1,9 +1,7 @@
 function renderDashboard() {
-  var pendentes = AppState.mensalidades.filter(function(m) { return !m.pago; });
-  var totalDebito = pendentes.reduce(function(s, m) { return s + (Number(m.valor) || 0); }, 0);
-  var proximo = pendentes.length > 0 ? pendentes[0] : null;
-
   var app = document.getElementById('app');
+  var nome = AppState.cliente ? AppState.cliente.nome || '' : '';
+
   app.innerHTML =
     '<div class="app-bar"><span class="title">Ressurreição</span><div class="actions">' +
       '<button class="btn-icon" onclick="recarregarDashboard()" title="Atualizar">&#x21bb;</button>' +
@@ -13,38 +11,44 @@ function renderDashboard() {
 
   var content = document.getElementById('dashContent');
   if (!AppState.cliente) {
-    content.innerHTML = '<div class="spinner" style="display:flex;justify-content:center;padding:40px">' +
-      '<div style="width:32px;height:32px;border:3px solid #E0E0E0;border-top-color:#1B5E20;border-radius:50%;animation:spin 0.8s linear infinite"></div></div>' +
-      '<style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+    content.innerHTML = '<div class="spinner"></div>';
     return;
   }
 
   content.innerHTML =
-    '<div class="card"><div style="display:flex;align-items:center;gap:16px">' +
-      '<div style="width:60px;height:60px;border-radius:50%;background:#1B5E20;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;flex-shrink:0">&#128100;</div>' +
-      '<div><div style="font-size:18px;font-weight:600">' + (AppState.cliente.nome || 'Cliente') + '</div>' +
-      '<div style="font-size:14px;color:#757575">Código: ' + (AppState.cliente.codigo_propri || '') + '</div></div>' +
-    '</div></div>' +
+    '<div class="home-container">' +
+      '<img src="images/logo.jpg" alt="Ressurreição" class="home-logo" onerror="this.style.display=\'none\'">' +
+      '<div class="home-welcome">Ol\u00e1, ' + nome.split(' ')[0] + '</div>' +
+      '<div class="home-subtitle">' + (AppState.cliente.codigo_propri ? 'C\u00f3digo: ' + AppState.cliente.codigo_propri : '') + '</div>' +
+      '<div class="home-menu">' +
+        '<button class="home-menu-btn" onclick="navigate(\'#/dados_pessoais\')">' +
+          '<div class="icon-box" style="background:#E3F2FD;color:#2B6CB0">&#128100;</div>' +
+          '<div class="menu-text"><span class="title">Dados Pessoais</span><span class="desc">Meus dados cadastrais</span></div>' +
+          '<span class="arrow">&#8250;</span>' +
+        '</button>' +
+        '<button class="home-menu-btn" onclick="carregarFalecidosEAbrir()">' +
+          '<div class="icon-box" style="background:#F0E6FF;color:#7B2D8E">&#x2764;</div>' +
+          '<div class="menu-text"><span class="title">Entes Queridos Falecidos</span><span class="desc">Familiares sepultados</span></div>' +
+          '<span class="arrow">&#8250;</span>' +
+        '</button>' +
+        '<button class="home-menu-btn" onclick="navigate(\'#/mensalidades\')">' +
+          '<div class="icon-box" style="background:#FFF3E0;color:#E67E22">&#128196;</div>' +
+          '<div class="menu-text"><span class="title">Boletos de Mensalidades</span><span class="desc">Boletos e pagamentos</span></div>' +
+          '<span class="arrow">&#8250;</span>' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+}
 
-    '<div class="card" style="text-align:center;padding:24px;background:' + (totalDebito > 0 ? '#FFF3E0' : '#E8F5E9') + '">' +
-      '<div style="font-size:14px;color:#757575;margin-bottom:8px">' + (totalDebito > 0 ? 'Total a Pagar' : 'Tudo em Dia!') + '</div>' +
-      '<div style="font-size:32px;font-weight:700;color:' + (totalDebito > 0 ? '#F57C00' : '#388E3C') + '">' + formatCurrency(totalDebito) + '</div>' +
-      (pendentes.length > 0 ? '<div style="font-size:14px;color:#757575;margin-top:8px">' + pendentes.length + ' mensalidade(s) pendente(s)</div>' : '') +
-    '</div>' +
-
-    (proximo ? '<div class="card" style="display:flex;align-items:center;gap:16px">' +
-      '<div style="width:52px;height:52px;border-radius:12px;background:#E3F2FD;display:flex;align-items:center;justify-content:center;color:#1565C0;font-size:24px;flex-shrink:0">&#128197;</div>' +
-      '<div><div style="font-size:14px;color:#757575">Próximo Vencimento</div>' +
-      '<div style="font-size:18px;font-weight:600">' + formatDate(proximo.vecto) + '</div>' +
-      '<div style="font-size:14px;color:#757575">' + formatCurrency(proximo.valor) + '</div></div>' +
-    '</div>' : '') +
-
-    '<button class="btn btn-primary" onclick="navigate(\'#/mensalidades\')" style="margin-top:16px">VER MENSALIDADES</button>';
+async function carregarFalecidosEAbrir() {
+  await carregarFalecidos();
+  navigate('#/falecidos');
 }
 
 async function recarregarDashboard() {
-  var content = document.getElementById('dashContent');
-  if (content) content.innerHTML = '<div style="text-align:center;padding:40px;color:#757575">Atualizando...</div>';
+  AppState.cliente = null;
+  AppState.mensalidades = [];
+  AppState.falecidos = [];
   await carregarDadosCliente();
   renderDashboard();
 }
@@ -54,6 +58,7 @@ async function handleLogout() {
   AppState.user = null;
   AppState.cliente = null;
   AppState.mensalidades = [];
+  AppState.falecidos = [];
   AppState.configBanco = null;
   navigate('#/login');
 }

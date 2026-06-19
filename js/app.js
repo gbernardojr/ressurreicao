@@ -3,6 +3,7 @@ const AppState = {
   cliente: null,
   mensalidades: [],
   configBanco: null,
+  falecidos: [],
 };
 
 function showToast(message) {
@@ -16,6 +17,18 @@ function showToast(message) {
 function formatDate(s) {
   if (!s) return '-';
   try { const d = new Date(s); return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR'); } catch(e) { return '-'; }
+}
+
+function formatDateBr(s) {
+  if (!s) return '-';
+  try {
+    var d = new Date(s);
+    if (isNaN(d.getTime())) return '-';
+    var dia = String(d.getDate()).padStart(2, '0');
+    var mes = String(d.getMonth() + 1).padStart(2, '0');
+    var ano = d.getFullYear();
+    return dia + '/' + mes + '/' + ano;
+  } catch(e) { return '-'; }
 }
 
 function formatCurrency(v) {
@@ -49,6 +62,15 @@ async function carregarDadosCliente() {
   } catch (e) { console.error('Erro carregar dados:', e); }
 }
 
+async function carregarFalecidos() {
+  try {
+    var sb = getSupabase();
+    if (!sb || !AppState.cliente) return;
+    var falecidos = (await sb.from('falecidos').select().eq('cliente_id', AppState.cliente.id).order('nome', { ascending: true })).data;
+    AppState.falecidos = falecidos || [];
+  } catch (e) { console.error('Erro carregar falecidos:', e); }
+}
+
 function navigate(hash) {
   window.location.hash = hash;
 }
@@ -79,6 +101,9 @@ async function handleRoute() {
       case '/login': renderLogin(); break;
       case '/cadastro': renderCadastro(); break;
       case '/dashboard': renderDashboard(); break;
+      case '/dados_pessoais': renderDadosPessoais(); break;
+      case '/falecidos': renderFalecidos(); break;
+      case '/falecido': renderFalecidoDetalhe(parts[1] ? parts[1].replace('id=', '') : null); break;
       case '/mensalidades': renderMensalidades(); break;
       case '/boleto': renderBoleto(parts[1] ? parts[1].replace('id=', '') : null); break;
       default: renderLogin();

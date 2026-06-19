@@ -5,19 +5,19 @@
 }
 
 :root {
-  --primary: #1B5E20;
-  --primary-light: #4CAF50;
-  --primary-dark: #0D3B0F;
+  --primary: #4A90D9;
+  --primary-light: #87CEEB;
+  --primary-dark: #2B6CB0;
   --danger: #D32F2F;
   --warning: #F57C00;
   --success: #388E3C;
-  --bg: #F5F5F5;
+  --bg: #F0F4F8;
   --card: #FFFFFF;
   --text: #212121;
-  --text-secondary: #757575;
-  --border: #E0E0E0;
+  --text-secondary: #6B8BA4;
+  --border: #D4E2ED;
   --radius: 12px;
-  --shadow: 0 2px 8px rgba(0,0,0,0.1);
+  --shadow: 0 2px 8px rgba(74, 144, 217, 0.12);
 }
 
 html, body {
@@ -132,7 +132,7 @@ body {
   border: 2px solid var(--primary);
 }
 
-.btn-outline:hover:not(:disabled) { background: rgba(27, 94, 32, 0.05); }
+.btn-outline:hover:not(:disabled) { background: rgba(74, 144, 217, 0.05); }
 
 .btn-danger {
   background: var(--danger);
@@ -262,6 +262,108 @@ body {
 
 .login-card .link:hover { color: var(--primary-dark); }
 
+/* Home Screen */
+.home-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px;
+  min-height: calc(100vh - 56px);
+}
+
+.home-logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 16px;
+  border: 4px solid var(--primary-light);
+  box-shadow: 0 4px 16px rgba(74, 144, 217, 0.2);
+}
+
+.home-welcome {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.home-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.home-menu {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 20px 24px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  font-size: 16px;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.home-menu-btn:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(74, 144, 217, 0.2);
+}
+
+.home-menu-btn:active {
+  transform: scale(0.98);
+}
+
+.home-menu-btn .icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.home-menu-btn .menu-text {
+  flex: 1;
+}
+
+.home-menu-btn .menu-text .title {
+  font-size: 16px;
+  font-weight: 600;
+  display: block;
+}
+
+.home-menu-btn .menu-text .desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 2px;
+}
+
+.home-menu-btn .arrow {
+  font-size: 20px;
+  color: var(--text-secondary);
+}
+
 /* Dashboard */
 .cliente-card {
   display: flex;
@@ -330,7 +432,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1565C0;
+  color: var(--primary-dark);
   font-size: 24px;
   flex-shrink: 0;
 }
@@ -497,6 +599,61 @@ body {
   opacity: 0.5;
 }
 
+/* Falecidos list */
+.falecido-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.falecido-item:active { transform: scale(0.99); }
+
+.falecido-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-dark);
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.falecido-info h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.falecido-info p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Detail rows */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-row:last-child { border-bottom: none; }
+
+.detail-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+}
+
 /* Toast / Snackbar */
 .snackbar {
   position: fixed;
@@ -531,4 +688,6 @@ body {
   .main-content { padding: 12px; }
   .login-card { padding: 20px; }
   .resumo-card .valor { font-size: 28px; }
+  .home-logo { width: 96px; height: 96px; }
+  .home-menu-btn { padding: 16px 20px; }
 }
