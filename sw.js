@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ressurricao-v2';
+const CACHE_NAME = 'ressurricao-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -7,6 +7,8 @@ const STATIC_ASSETS = [
   '/js/app.js',
   '/js/auth.js',
   '/js/dashboard.js',
+  '/js/dados_pessoais.js',
+  '/js/falecidos.js',
   '/js/mensalidades.js',
   '/js/boleto.js',
   '/js/boleto-utils.js',
