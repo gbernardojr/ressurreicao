@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ressurricao-v1';
+const CACHE_NAME = 'ressurricao-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
