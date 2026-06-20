@@ -219,7 +219,7 @@ body {
 }
 
 .login-header .logo {
-  width: 96px;
+  width: 144px;
   height: 96px;
   object-fit: cover;
   margin-bottom: 16px;
@@ -272,7 +272,7 @@ body {
 }
 
 .home-logo {
-  width: 120px;
+  width: 180px;
   height: 120px;
   object-fit: cover;
   margin-bottom: 16px;
