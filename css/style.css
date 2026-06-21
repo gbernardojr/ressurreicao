@@ -37,6 +37,17 @@ body {
 
 .hidden { display: none !important; }
 
+.install-area {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+}
+
+.install-area .link {
+  font-size: 13px;
+  color: #4A90D9;
+}
+
 /* App Bar */
 .app-bar {
   background: var(--primary);

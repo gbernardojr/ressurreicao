@@ -6,6 +6,71 @@ function formatarCpf(v) {
   return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9,11);
 }
 
+var deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  mostrarLinkInstalar();
+});
+
+window.addEventListener('appinstalled', function() {
+  deferredPrompt = null;
+  ocultarLinkInstalar();
+});
+
+function estaInstalado() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+
+function mostrarLinkInstalar() {
+  var el = document.getElementById('installLink');
+  if (el) el.classList.remove('hidden');
+}
+
+function ocultarLinkInstalar() {
+  var el = document.getElementById('installLink');
+  if (el) el.classList.add('hidden');
+}
+
+function handleInstallClick() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(choice) {
+      if (choice.outcome === 'accepted') {
+        console.log('App instalado');
+      }
+      deferredPrompt = null;
+    });
+  } else {
+    showInstallInstructions();
+  }
+}
+
+function showInstallInstructions() {
+  var app = document.getElementById('app');
+  var overlay = document.createElement('div');
+  overlay.id = 'installOverlay';
+  overlay.style.cssText =
+    'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px';
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove();
+  });
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:32px 24px;max-width:360px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)">' +
+      '<div style="font-size:48px;margin-bottom:16px">&#128241;</div>' +
+      '<h3 style="margin:0 0 8px;font-size:18px;color:#333">Instalar no dispositivo</h3>' +
+      '<p style="margin:0 0 20px;font-size:14px;color:#666;line-height:1.5">' +
+        (navigator.userAgent.match(/iphone|ipad|ipod/i)
+          ? 'No Safari, toque no ícone <b>Compartilhar</b> <span style="font-size:20px">&#8599;</span> e depois em <b>"Adicionar à Tela de Início"</b>.'
+          : 'Use o menu do navegador e selecione <b>"Adicionar à tela inicial"</b> ou <b>"Instalar aplicativo"</b>.') +
+      '</p>' +
+      '<button onclick="this.closest(\'#installOverlay\').remove()" style="background:#4A90D9;color:#fff;border:none;padding:12px 32px;border-radius:8px;font-size:16px;cursor:pointer">Entendi</button>' +
+    '</div>';
+  document.body.appendChild(overlay);
+}
+
 function renderLogin() {
   var app = document.getElementById('app');
   app.innerHTML =
@@ -28,6 +93,9 @@ function renderLogin() {
           '<button type="submit" id="loginBtn" class="btn btn-primary">ENTRAR</button>' +
         '</form>' +
         '<button class="link" onclick="navigate(\'#/cadastro\')">Primeiro acesso? Cadastre sua senha</button>' +
+        '<div id="installArea" class="install-area' + (estaInstalado() && !deferredPrompt ? ' hidden' : '') + '">' +
+          '<button class="link" id="installLink" onclick="handleInstallClick()">Instalar o sistema no dispositivo local</button>' +
+        '</div>' +
       '</div>' +
     '</div>';
 
