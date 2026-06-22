@@ -76,6 +76,35 @@ class BradescoHelper {
     return dv;
   }
 
+  static parseLinhaDigitavel(linha) {
+    const cleaned = linha.replace(/[.\s]/g, '');
+    if (cleaned.length !== 47) return null;
+
+    const banco = cleaned.substring(0, 3);
+    const moeda = cleaned.substring(3, 4);
+    const campoLivre1 = cleaned.substring(4, 9);
+    const dv1 = cleaned.substring(9, 10);
+    const campoLivre2 = cleaned.substring(10, 20);
+    const dv2 = cleaned.substring(20, 21);
+    const campoLivre3 = cleaned.substring(21, 31);
+    const dv3 = cleaned.substring(31, 32);
+    const dvGeral = cleaned.substring(32, 33);
+    const fator = cleaned.substring(33, 37);
+    const valor = cleaned.substring(37, 47);
+
+    const campoLivre = campoLivre1 + campoLivre2 + campoLivre3;
+    const codigoBarras = banco + moeda + dvGeral + fator + valor + campoLivre;
+
+    const c1 = banco + moeda + campoLivre1;
+    const c1fmt = c1.substring(0, 5) + '.' + c1.substring(5) + dv1;
+    const c2fmt = campoLivre2.substring(0, 5) + '.' + campoLivre2.substring(5) + dv2;
+    const c3fmt = campoLivre3.substring(0, 5) + '.' + campoLivre3.substring(5) + dv3;
+
+    const linhaDigitavel = c1fmt + ' ' + c2fmt + ' ' + c3fmt + ' ' + dvGeral + ' ' + fator + valor;
+
+    return new BoletoModel(linhaDigitavel, codigoBarras);
+  }
+
   static _calcularDVModulo11(texto, base = 9) {
     let soma = 0;
     let peso = 2;
