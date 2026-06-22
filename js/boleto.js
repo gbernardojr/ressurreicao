@@ -108,30 +108,57 @@ function gerarBarcode(m, config) {
 }
 
 function copiarLinhaDigitavel() {
-  const boleto = AppState._boletoAtual;
-  if (!boleto || !boleto.linhaDigitavel) {
+  var codigo = '';
+  var boleto = AppState._boletoAtual;
+  if (boleto && boleto.linhaDigitavel) {
+    codigo = boleto.linhaDigitavel;
+  } else {
+    var el = document.getElementById('boletoLinha');
+    if (el && el.textContent) codigo = el.textContent;
+  }
+  if (!codigo) {
     showToast('Gere o código de barras primeiro');
     return;
   }
-  const codigo = boleto.linhaDigitavel.replace(/[.\s]/g, '');
-  navigator.clipboard.writeText(codigo).then(() => {
-    showToast('Código copiado!');
-  }).catch(() => {
-    const textarea = document.createElement('textarea');
-    textarea.value = codigo;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    try {
-      document.execCommand('copy');
+  codigo = codigo.replace(/[.\s]/g, '');
+
+  var ta = document.createElement('textarea');
+  ta.value = codigo;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.width = '1px';
+  ta.style.height = '1px';
+  ta.style.opacity = '0';
+  ta.style.pointerEvents = 'none';
+  document.body.appendChild(ta);
+
+  var ok = false;
+  try {
+    ta.focus();
+    ta.select();
+    ok = document.execCommand('copy');
+  } catch (e) {}
+
+  if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(codigo).then(function() {
+      ok = true;
       showToast('Código copiado!');
-    } catch (e) {
-      showToast('Erro ao copiar. Selecione manualmente.');
+    }).catch(function() {});
+  }
+
+  document.body.removeChild(ta);
+
+  if (ok) {
+    showToast('Código copiado!');
+  } else {
+    var area = document.getElementById('boletoLinha');
+    if (area) {
+      area.style.userSelect = 'text';
+      area.style.webkitUserSelect = 'text';
     }
-    textarea.remove();
-  });
+    showToast('Selecione o c\u00f3digo manualmente');
+  }
 }
 
 function gerarPdfBoleto() {
