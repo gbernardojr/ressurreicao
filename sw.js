@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ressurricao-v3';
+const CACHE_NAME = 'ressurricao-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -51,7 +51,7 @@ self.addEventListener('fetch', (event) => {
   } else if (url.origin === 'https://unpkg.com' || url.origin === 'https://cdn.jsdelivr.net' || url.origin === 'https://cdnjs.cloudflare.com') {
     event.respondWith(cacheFirst(request));
   } else {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(staleWhileRevalidate(request));
   }
 });
 
@@ -82,4 +82,16 @@ async function networkFirst(request) {
       headers: { 'Content-Type': 'application/json' },
     });
   }
+}
+
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  const fetchPromise = fetch(request).then(function(response) {
+    if (response && response.status === 200) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  }).catch(function() {});
+  return cached || fetchPromise;
 }
