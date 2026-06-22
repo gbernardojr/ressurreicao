@@ -43,7 +43,7 @@ function renderMensalidadesList() {
   var html = '';
   filtered.forEach(function(m) {
     var isPago = m.pago === true;
-    var vecto = new Date(m.vecto);
+    var vecto = parseDateSafe(m.vecto) || new Date();
     var isVencida = !isPago && vecto < new Date();
     var sClass = isPago ? 'pago' : (isVencida ? 'vencida' : 'pendente');
     var sText = isPago ? 'Pago' : (isVencida ? 'Vencida' : 'Pendente');

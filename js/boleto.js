@@ -13,7 +13,7 @@ function getBoletoFromMensalidade(m, config) {
       nossoNumero: m.nosso_numero ? String(m.nosso_numero) : String(m.reg),
       contaCorrente: String(config.conta_corrente || '0000000'),
       valor: m.valor || 0,
-      vencimento: new Date(m.vecto),
+      vencimento: parseDateSafe(m.vecto) || new Date(),
     });
   } catch (e) { return null; }
 }
@@ -211,7 +211,8 @@ function gerarPdfBoleto() {
 
   const df = (d) => {
     if (!d) return '';
-    const dt = new Date(d);
+    const dt = (d instanceof Date) ? d : parseDateSafe(d);
+    if (!dt) return '';
     return String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
   };
   const cf = (v) => {
@@ -224,7 +225,7 @@ function gerarPdfBoleto() {
   const agencia = AppState.configBanco?.agencia || '';
   const conta = AppState.configBanco?.conta_corrente || '';
   const nossoNumero = m.nosso_numero || '';
-  const vencimento = m.vecto ? new Date(m.vecto) : new Date();
+  const vencimento = m.vecto ? parseDateSafe(m.vecto) || new Date() : new Date();
   const valor = m.valor || 0;
 
   const bolMensagem2 = m.bol_mensagem2 || 'APOS 30 DIAS DO VENCIMENTO O TITULO SERA PROTESTADO AUTOMAT.';

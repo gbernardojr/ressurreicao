@@ -14,16 +14,24 @@ function showToast(message) {
   setTimeout(() => t.remove(), 3000);
 }
 
+function parseDateSafe(s) {
+  if (!s) return null;
+  var parts = s.split('-');
+  if (parts.length === 3) return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function formatDate(s) {
   if (!s) return '-';
-  try { const d = new Date(s); return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR'); } catch(e) { return '-'; }
+  try { var d = parseDateSafe(s); if (!d) return '-'; return d.toLocaleDateString('pt-BR'); } catch(e) { return '-'; }
 }
 
 function formatDateBr(s) {
   if (!s) return '-';
   try {
-    var d = new Date(s);
-    if (isNaN(d.getTime())) return '-';
+    var d = parseDateSafe(s);
+    if (!d) return '-';
     var dia = String(d.getDate()).padStart(2, '0');
     var mes = String(d.getMonth() + 1).padStart(2, '0');
     var ano = d.getFullYear();
