@@ -92,7 +92,8 @@ function renderLogin() {
           '<div id="loginError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
           '<button type="submit" id="loginBtn" class="btn btn-primary">ENTRAR</button>' +
         '</form>' +
-        '<button class="link" onclick="navigate(\'#/cadastro\')">Primeiro acesso? Cadastre sua senha</button>' +
+        '<button class="link" onclick="navigate(\'#/esqueci-senha\')" style="margin-top:4px">Esqueci minha senha</button>' +
+      '<button class="link" onclick="navigate(\'#/cadastro\')">Primeiro acesso? Cadastre sua senha</button>' +
         '<div id="installArea" class="install-area' + (estaInstalado() && !deferredPrompt ? ' hidden' : '') + '">' +
           '<button class="link" id="installLink" onclick="handleInstallClick()">Instalar o sistema no dispositivo local</button>' +
         '</div>' +
@@ -163,6 +164,73 @@ function renderCadastro() {
 
   document.getElementById('cadCpfInput').addEventListener('input', function() { this.value = formatarCpf(this.value); });
   document.getElementById('cadastroForm').addEventListener('submit', handleCadastro);
+}
+
+function renderEsqueciSenha() {
+  var app = document.getElementById('app');
+  app.innerHTML =
+    '<div class="app-bar"><button class="btn-icon" onclick="navigate(\'#/login\')">&#8592;</button><span class="title">Recuperar Senha</span></div>' +
+    '<div class="main-content">' +
+      '<div class="card">' +
+        '<h2 style="margin-bottom:8px">Recuperar senha</h2>' +
+        '<p style="color:#757575;margin-bottom:24px">Informe seu CPF para receber um link de redefinição de senha no e-mail cadastrado.</p>' +
+        '<form id="esqueciSenhaForm">' +
+          '<div class="form-group"><label class="form-label">CPF</label><input type="text" id="esqueciCpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
+          '<div id="esqueciError" class="alert alert-error hidden"></div>' +
+          '<div id="esqueciSuccess" class="alert alert-success hidden"></div>' +
+          '<button type="submit" id="esqueciBtn" class="btn btn-primary">ENVIAR LINK</button>' +
+        '</form>' +
+        '<button class="link" onclick="navigate(\'#/login\')" style="margin-top:12px">Voltar ao login</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('esqueciCpfInput').addEventListener('input', function() {
+    this.value = formatarCpf(this.value);
+  });
+  document.getElementById('esqueciSenhaForm').addEventListener('submit', handleEsqueciSenha);
+}
+
+async function handleEsqueciSenha(e) {
+  e.preventDefault();
+  var cpf = document.getElementById('esqueciCpfInput').value.replace(/\D/g, '');
+  var errEl = document.getElementById('esqueciError');
+  var okEl = document.getElementById('esqueciSuccess');
+  var btn = document.getElementById('esqueciBtn');
+
+  errEl.classList.add('hidden');
+  okEl.classList.add('hidden');
+
+  if (!cpf || cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    var sb = getSupabase();
+    if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
+
+    var busca = await sb.from('clientes').select('id, email, nome').eq('cpf_cnpj', cpf).maybeSingle();
+    var cliente = busca.data;
+
+    if (!cliente) { errEl.textContent = 'CPF não encontrado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
+    if (!cliente.email) { errEl.textContent = 'Cliente sem e-mail cadastrado. Procure a recepção.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
+
+    var auth = await sb.auth.resetPasswordForEmail(cliente.email, {
+      redirectTo: window.location.origin + '/#/login',
+    });
+
+    if (auth.error) { errEl.textContent = 'Erro ao enviar e-mail. Tente novamente.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
+
+    okEl.textContent = 'Link de redefinição enviado para ' + cliente.email;
+    okEl.classList.remove('hidden');
+    btn.disabled = true;
+    btn.textContent = 'ENVIADO';
+  } catch (err) {
+    errEl.textContent = 'Erro ao conectar. Tente novamente.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'ENVIAR LINK';
+  }
 }
 
 async function handleCadastro(e) {

@@ -85,7 +85,7 @@ async function handleRoute() {
       session = r.data ? r.data.session : null;
     }
 
-    if (!session && hash !== '#/login' && hash !== '#/cadastro') {
+    if (!session && hash !== '#/login' && hash !== '#/cadastro' && hash !== '#/esqueci-senha') {
       navigate('#/login');
       return;
     }
@@ -100,6 +100,7 @@ async function handleRoute() {
     switch (route) {
       case '/login': renderLogin(); break;
       case '/cadastro': renderCadastro(); break;
+      case '/esqueci-senha': renderEsqueciSenha(); break;
       case '/dashboard': renderDashboard(); break;
       case '/dados_pessoais': renderDadosPessoais(); break;
       case '/falecidos': renderFalecidos(); break;
