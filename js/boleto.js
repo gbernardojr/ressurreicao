@@ -71,39 +71,58 @@ function renderBoleto(mensalidadeId) {
     </div>
   `;
 
-  if (!isPago && config) {
-    setTimeout(() => gerarBarcode(m, config), 200);
+  if (!isPago) {
+    if (config) {
+      try {
+        AppState._boletoAtual = BradescoHelper.gerarBoleto({
+          agencia: String(config.agencia || '0000'),
+          carteira: String(config.carteira || '06'),
+          nossoNumero: m.nosso_numero ? String(m.nosso_numero) : String(m.reg),
+          contaCorrente: String(config.conta_corrente || '0000000'),
+          valor: m.valor || 0,
+          vencimento: new Date(m.vecto),
+        });
+      } catch (e) {}
+      setTimeout(() => gerarBarcode(m, config), 200);
+    } else {
+      AppState._boletoAtual = null;
+    }
   }
 }
 
 function gerarBarcode(m, config) {
   try {
-    const boleto = BradescoHelper.gerarBoleto({
-      agencia: config.agencia || '0000',
-      carteira: config.carteira || '06',
-      nossoNumero: m.nosso_numero || String(m.reg),
-      contaCorrente: config.conta_corrente || '0000000',
-      valor: m.valor || 0,
-      vencimento: new Date(m.vecto),
-    });
+    var boleto = AppState._boletoAtual;
+    if (!boleto) {
+      boleto = BradescoHelper.gerarBoleto({
+        agencia: String(config.agencia || '0000'),
+        carteira: String(config.carteira || '06'),
+        nossoNumero: m.nosso_numero ? String(m.nosso_numero) : String(m.reg),
+        contaCorrente: String(config.conta_corrente || '0000000'),
+        valor: m.valor || 0,
+        vencimento: new Date(m.vecto),
+      });
+      AppState._boletoAtual = boleto;
+    }
 
-    AppState._boletoAtual = boleto;
+    var container = document.getElementById('boletoBarcode');
+    if (container) {
+      container.innerHTML = '<svg id="barcodeSvg"></svg>';
+      JsBarcode('#barcodeSvg', boleto.codigoBarras, {
+        format: 'CODE128',
+        width: 2,
+        height: 80,
+        displayValue: false,
+        margin: 10,
+      });
+    }
 
-    const container = document.getElementById('boletoBarcode');
-    container.innerHTML = '<svg id="barcodeSvg"></svg>';
-
-    JsBarcode('#barcodeSvg', boleto.codigoBarras, {
-      format: 'CODE128',
-      width: 2,
-      height: 80,
-      displayValue: false,
-      margin: 10,
-    });
-
-    document.getElementById('boletoLinha').textContent = boleto.linhaDigitavel;
+    var elLinha = document.getElementById('boletoLinha');
+    if (elLinha) elLinha.textContent = boleto.linhaDigitavel;
   } catch (err) {
-    document.getElementById('boletoBarcode').innerHTML =
-      '<p style="color:var(--danger)">Erro ao gerar código de barras</p>';
+    console.error('Erro ao gerar barcode:', err);
+    var bc = document.getElementById('boletoBarcode');
+    if (bc) bc.innerHTML = '<p style="color:var(--danger)">Erro ao gerar código de barras</p>';
   }
 }
 
@@ -162,10 +181,34 @@ function copiarLinhaDigitavel() {
 }
 
 function gerarPdfBoleto() {
-  const boleto = AppState._boletoAtual;
   const m = AppState._mensalidadeAtual;
 
-  if (!boleto || !m) {
+  if (!m) {
+    showToast('Mensalidade não encontrada');
+    return;
+  }
+
+  const config = AppState.configBanco;
+  let boleto = AppState._boletoAtual;
+
+  if (!boleto && config) {
+    try {
+      boleto = BradescoHelper.gerarBoleto({
+        agencia: String(config.agencia || '0000'),
+        carteira: String(config.carteira || '06'),
+        nossoNumero: m.nosso_numero ? String(m.nosso_numero) : String(m.reg),
+        contaCorrente: String(config.conta_corrente || '0000000'),
+        valor: m.valor || 0,
+        vencimento: new Date(m.vecto),
+      });
+    } catch (e) {
+      console.error('Erro gerar boleto para PDF:', e);
+      showToast('Erro ao gerar dados do boleto');
+      return;
+    }
+  }
+
+  if (!boleto) {
     showToast('Gere o código de barras primeiro');
     return;
   }

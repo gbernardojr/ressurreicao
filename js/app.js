@@ -56,7 +56,7 @@ async function carregarDadosCliente() {
     if (cliente) {
       var mensalidades = (await sb.from('mensalidades').select().eq('cliente_id', cliente.id).order('vecto', { ascending: true })).data;
       AppState.mensalidades = mensalidades || [];
-      var config = (await sb.from('config_banco').select().eq('ativo', true).maybeSingle()).data;
+      var config = (await sb.from('config_banco').select().eq('ativo', true).limit(1).maybeSingle()).data;
       AppState.configBanco = config;
     }
   } catch (e) { console.error('Erro carregar dados:', e); }
