@@ -219,7 +219,7 @@ function gerarPdfBoleto() {
     return 'R$ ' + Number(v).toFixed(2).replace('.',',');
   };
 
-  const cedente = 'CEMITÉRIO FACE DO SOL';
+  const cedente = 'CEMITÉRIO DA RESSURREIÇÃO';
   const cnpjCedente = m.cpf_cnpj || '';
   const agencia = AppState.configBanco?.agencia || '';
   const conta = AppState.configBanco?.conta_corrente || '';
@@ -289,7 +289,12 @@ function gerarPdfBoleto() {
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0);
-  doc.text('BANCO BRADESCO', 15, y);
+  var _logo1 = document.getElementById('logoBradesco');
+  if (_logo1 && _logo1.complete && _logo1.naturalWidth > 0) {
+    doc.addImage(_logo1, 'PNG', 15, y - 6, 34, 9);
+  } else {
+    doc.text('BANCO BRADESCO', 15, y);
+  }
   doc.setFontSize(14);
   doc.setTextColor(255, 152, 0);
   doc.text('237-2', 180, y, { align: 'right' });
@@ -385,7 +390,12 @@ function gerarPdfBoleto() {
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(0);
-  doc.text('BANCO BRADESCO', 15, y);
+  var _logo2 = document.getElementById('logoBradesco');
+  if (_logo2 && _logo2.complete && _logo2.naturalWidth > 0) {
+    doc.addImage(_logo2, 'PNG', 15, y - 6, 34, 9);
+  } else {
+    doc.text('BANCO BRADESCO', 15, y);
+  }
   doc.setFontSize(12);
   doc.text('237-2', 55, y);
   doc.setFontSize(10);
