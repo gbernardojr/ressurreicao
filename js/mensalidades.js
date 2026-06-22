@@ -9,8 +9,9 @@ function renderMensalidades() {
     '<div class="main-content">' +
       '<div style="display:flex;gap:8px;padding:8px 0;overflow-x:auto;margin-bottom:8px" id="filterBar">' +
         '<button class="filter-chip active" data-filter="todas" onclick="filtrarMensalidades(\'todas\', this)" style="padding:6px 16px;border-radius:20px;border:1px solid #E0E0E0;background:#fff;font-size:14px;cursor:pointer;white-space:nowrap">Todas</button>' +
-        '<button class="filter-chip" data-filter="pendentes" onclick="filtrarMensalidades(\'pendentes\', this)" style="padding:6px 16px;border-radius:20px;border:1px solid #E0E0E0;background:#fff;font-size:14px;cursor:pointer;white-space:nowrap">Pendentes</button>' +
-        '<button class="filter-chip" data-filter="pagas" onclick="filtrarMensalidades(\'pagas\', this)" style="padding:6px 16px;border-radius:20px;border:1px solid #E0E0E0;background:#fff;font-size:14px;cursor:pointer;white-space:nowrap">Pagas</button>' +
+        '<button class="filter-chip" data-filter="em_aberto" onclick="filtrarMensalidades(\'em_aberto\', this)" style="padding:6px 16px;border-radius:20px;border:1px solid #E0E0E0;background:#fff;font-size:14px;cursor:pointer;white-space:nowrap">Em Aberto</button>' +
+        '<button class="filter-chip" data-filter="vencido" onclick="filtrarMensalidades(\'vencido\', this)" style="padding:6px 16px;border-radius:20px;border:1px solid #E0E0E0;background:#fff;font-size:14px;cursor:pointer;white-space:nowrap">Vencido</button>' +
+        '<button class="filter-chip" data-filter="pagas" onclick="filtrarMensalidades(\'pagas\', this)" style="padding:6px 16px;border-radius:20px;border:1px solid #E0E0E0;background:#fff;font-size:14px;cursor:pointer;white-space:nowrap">Pago</button>' +
       '</div>' +
       '<div id="mensalidadesList"></div>' +
     '</div>';
@@ -32,7 +33,9 @@ function renderMensalidadesList() {
   var container = document.getElementById('mensalidadesList');
   var filtered = AppState.mensalidades;
 
-  if (_mensalidadesFilter === 'pendentes') filtered = filtered.filter(function(m) { return !m.pago; });
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  if (_mensalidadesFilter === 'em_aberto') filtered = filtered.filter(function(m) { return !m.pago && parseDateSafe(m.vecto) >= hoje; });
+  else if (_mensalidadesFilter === 'vencido') filtered = filtered.filter(function(m) { return !m.pago && parseDateSafe(m.vecto) < hoje; });
   else if (_mensalidadesFilter === 'pagas') filtered = filtered.filter(function(m) { return m.pago; });
 
   if (!filtered || filtered.length === 0) {
@@ -44,11 +47,12 @@ function renderMensalidadesList() {
   filtered.forEach(function(m) {
     var isPago = m.pago === true;
     var vecto = parseDateSafe(m.vecto) || new Date();
-    var isVencida = !isPago && vecto < new Date();
-    var sClass = isPago ? 'pago' : (isVencida ? 'vencida' : 'pendente');
-    var sText = isPago ? 'Pago' : (isVencida ? 'Vencida' : 'Pendente');
-    var sColor = isPago ? '#388E3C' : (isVencida ? '#D32F2F' : '#F57C00');
-    var sBg = isPago ? '#E8F5E9' : (isVencida ? '#FFEBEE' : '#FFF3E0');
+    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    var isVencido = !isPago && vecto < hoje;
+    var sClass = isPago ? 'pago' : (isVencido ? 'vencido' : 'em_aberto');
+    var sText = isPago ? 'Pago' : (isVencido ? 'Vencido' : 'em Aberto');
+    var sColor = isPago ? '#388E3C' : (isVencido ? '#D32F2F' : '#F57C00');
+    var sBg = isPago ? '#E8F5E9' : (isVencido ? '#FFEBEE' : '#FFF3E0');
 
     var id = m.id || m.reg;
     html +=
