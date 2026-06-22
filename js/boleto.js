@@ -77,9 +77,7 @@ function renderBoleto(mensalidadeId) {
           <button class="btn btn-outline no-print" onclick="gerarPdfBoleto()">
             GERAR PDF
           </button>
-          <button class="btn btn-outline no-print" onclick="imprimirBoleto()" style="margin-top:8px">
-            IMPRIMIR
-          </button>
+
         </div>
       ` : `
         <div class="card" style="text-align:center;padding:32px">
