@@ -52,7 +52,7 @@ function renderBoleto(mensalidadeId) {
           </div>
           <div id="boletoLinha" class="linha-digitavel"></div>
           <button class="btn btn-primary no-print" onclick="copiarLinhaDigitavel()" style="margin-bottom:12px">
-            COPIAR CÓDIGO
+            COPIAR CÓDIGO DE BARRA
           </button>
           <button class="btn btn-outline no-print" onclick="gerarPdfBoleto()">
             GERAR PDF
@@ -108,19 +108,29 @@ function gerarBarcode(m, config) {
 }
 
 function copiarLinhaDigitavel() {
-  const linha = document.getElementById('boletoLinha');
-  if (!linha) return;
-  const codigo = linha.textContent;
+  const boleto = AppState._boletoAtual;
+  if (!boleto || !boleto.linhaDigitavel) {
+    showToast('Gere o código de barras primeiro');
+    return;
+  }
+  const codigo = boleto.linhaDigitavel.replace(/[.\s]/g, '');
   navigator.clipboard.writeText(codigo).then(() => {
     showToast('Código copiado!');
   }).catch(() => {
     const textarea = document.createElement('textarea');
     textarea.value = codigo;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
     document.body.appendChild(textarea);
+    textarea.focus();
     textarea.select();
-    document.execCommand('copy');
+    try {
+      document.execCommand('copy');
+      showToast('Código copiado!');
+    } catch (e) {
+      showToast('Erro ao copiar. Selecione manualmente.');
+    }
     textarea.remove();
-    showToast('Código copiado!');
   });
 }
 
