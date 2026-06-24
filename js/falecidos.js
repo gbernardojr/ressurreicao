@@ -78,9 +78,8 @@ async function carregarLocaisFalecido(falecidoId) {
     locais.forEach(function(l) {
       html +=
         '<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">' +
-          '<div style="display:flex;justify-content:space-between;margin-bottom:8px">' +
+          '<div style="margin-bottom:8px">' +
             '<span style="font-weight:600;color:var(--primary-dark)">' + (l.jazigo || l.local_tipo || 'Jazigo') + '</span>' +
-            (l.data_inicio ? '<span style="font-size:13px;color:var(--text-secondary)">' + formatDateBr(l.data_inicio) + (l.data_fim ? ' at\u00e9 ' + formatDateBr(l.data_fim) : '') + '</span>' : '') +
           '</div>' +
           '<div class="detail-row"><span class="detail-label">Quadra</span><span class="detail-value">' + (l.quadra || '-') + '</span></div>' +
           '<div class="detail-row" style="border-bottom:none"><span class="detail-label">Carneira</span><span class="detail-value">' + (l.carneira || '-') + '</span></div>' +
