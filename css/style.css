@@ -230,12 +230,10 @@ body {
 }
 
 .login-header .logo {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 50%;
+  width: 100px;
+  height: auto;
+  object-fit: contain;
   margin-bottom: 16px;
-  border: 3px solid rgba(255,255,255,0.3);
 }
 
 .login-header h1 {
@@ -284,9 +282,8 @@ body {
 }
 
 .home-logo {
-  width: 180px;
+  width: 140px;
   height: auto;
-  max-height: 100px;
   object-fit: contain;
   margin-bottom: 16px;
 }
@@ -698,6 +695,6 @@ body {
   .main-content { padding: 12px; }
   .login-card { padding: 20px; }
   .resumo-card .valor { font-size: 28px; }
-  .home-logo { width: 140px; }
+  .home-logo { width: 110px; }
   .home-menu-btn { padding: 16px 20px; }
 }
