@@ -53,8 +53,6 @@ async function renderFalecidoDetalhe(id) {
         '<div class="detail-row"><span class="detail-label">Data Falecimento</span><span class="detail-value">' + formatDateBr(f.data_falecimento) + '</span></div>' +
         '<div class="detail-row"><span class="detail-label">Data Sepultamento</span><span class="detail-value">' + formatDateBr(f.data_sepultamento) + '</span></div>' +
         '<div class="detail-row"><span class="detail-label">Data Exuma\u00e7\u00e3o</span><span class="detail-value">' + formatDateBr(f.data_exumacao) + '</span></div>' +
-        '<div class="detail-row"><span class="detail-label">Jazigo</span><span class="detail-value">' + (f.jazigo || '-') + '</span></div>' +
-        '<div class="detail-row"><span class="detail-label">Carneira</span><span class="detail-value">' + (f.carneira || '-') + '</span></div>' +
       '</div>' +
       '<div class="card"><h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Locais de Sepultamento</h3><div id="locaisList"><div class="spinner"></div></div></div>' +
     '</div>';
