@@ -284,14 +284,11 @@ body {
 }
 
 .home-logo {
-  width: 400px;
-  height: 400px;
+  width: 180px;
+  height: auto;
+  max-height: 100px;
   object-fit: contain;
-  border-radius: 50%;
   margin-bottom: 16px;
-  border: 4px solid var(--primary-light);
-  box-shadow: 0 4px 16px rgba(74, 144, 217, 0.2);
-  background: #fff;
 }
 
 .home-welcome {
@@ -701,6 +698,6 @@ body {
   .main-content { padding: 12px; }
   .login-card { padding: 20px; }
   .resumo-card .valor { font-size: 28px; }
-  .home-logo { width: 260px; height: 260px; }
+  .home-logo { width: 140px; }
   .home-menu-btn { padding: 16px 20px; }
 }
