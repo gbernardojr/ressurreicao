@@ -57,10 +57,10 @@ async function renderFalecidoDetalhe(id) {
       '<div class="card"><h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Locais de Sepultamento</h3><div id="locaisList"><div class="spinner"></div></div></div>' +
     '</div>';
 
-  carregarLocaisFalecido(f.id);
+  carregarLocaisFalecido(f.id, f.jazigo);
 }
 
-async function carregarLocaisFalecido(falecidoId) {
+async function carregarLocaisFalecido(falecidoId, jazigoFallback) {
   var container = document.getElementById('locaisList');
   try {
     var sb = getSupabase();
@@ -77,7 +77,7 @@ async function carregarLocaisFalecido(falecidoId) {
       html +=
         '<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">' +
           '<div style="margin-bottom:8px">' +
-            '<span style="font-weight:600;color:var(--primary-dark)">' + (l.jazigo || l.local_tipo || 'Jazigo') + '</span>' +
+            '<span style="font-weight:600;color:var(--primary-dark)">' + (l.jazigo || jazigoFallback || l.local_tipo || 'Jazigo') + '</span>' +
           '</div>' +
           '<div class="detail-row"><span class="detail-label">Quadra</span><span class="detail-value">' + (l.quadra || '-') + '</span></div>' +
           '<div class="detail-row" style="border-bottom:none"><span class="detail-label">Carneira</span><span class="detail-value">' + (l.carneira || '-') + '</span></div>' +
