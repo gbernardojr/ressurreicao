@@ -371,6 +371,17 @@ body {
   color: var(--text-secondary);
 }
 
+.home-footer {
+  margin-top: auto;
+  padding: 24px 16px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  width: 100%;
+  max-width: 400px;
+  line-height: 1.4;
+}
+
 /* Dashboard */
 .cliente-card {
   display: flex;

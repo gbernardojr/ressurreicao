@@ -37,6 +37,7 @@ function renderDashboard() {
           '<span class="arrow">&#8250;</span>' +
         '</button>' +
       '</div>' +
+      '<div class="home-footer">desenvolvido por Gilberto Ap Bernardo Junior Tecnologia da Informa\u00e7\u00e3o</div>' +
     '</div>';
 }
 
