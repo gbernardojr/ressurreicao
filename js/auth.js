@@ -71,6 +71,13 @@ function showInstallInstructions() {
   document.body.appendChild(overlay);
 }
 
+var _isAdminLogin = false;
+
+function toggleAdminLogin() {
+  _isAdminLogin = !_isAdminLogin;
+  renderLogin();
+}
+
 function renderLogin() {
   var app = document.getElementById('app');
   app.innerHTML =
@@ -81,29 +88,51 @@ function renderLogin() {
       '</div>' +
       '<div class="login-card">' +
         '<form id="loginForm">' +
-          '<div class="form-group"><div class="input-icon">' +
-            '<span class="icon">&#128100;</span>' +
-            '<input type="text" id="cpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="username">' +
-          '</div></div>' +
-          '<div class="form-group"><div class="input-icon">' +
-            '<span class="icon">&#128274;</span>' +
-            '<input type="password" id="senhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
-          '</div></div>' +
+          (_isAdminLogin ? (
+            '<div class="form-group"><div class="input-icon">' +
+              '<span class="icon">&#9993;</span>' +
+              '<input type="email" id="adminEmailInput" class="form-input" placeholder="Email do administrador" autocomplete="email">' +
+            '</div></div>' +
+            '<div class="form-group"><div class="input-icon">' +
+              '<span class="icon">&#128274;</span>' +
+              '<input type="password" id="senhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
+            '</div></div>'
+          ) : (
+            '<div class="form-group"><div class="input-icon">' +
+              '<span class="icon">&#128100;</span>' +
+              '<input type="text" id="cpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="username">' +
+            '</div></div>' +
+            '<div class="form-group"><div class="input-icon">' +
+              '<span class="icon">&#128274;</span>' +
+              '<input type="password" id="senhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
+            '</div></div>'
+          )) +
           '<div id="loginError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
-          '<button type="submit" id="loginBtn" class="btn btn-primary">ENTRAR</button>' +
+          '<button type="submit" id="loginBtn" class="btn btn-primary">' + (_isAdminLogin ? 'ENTRAR COMO ADMIN' : 'ENTRAR') + '</button>' +
         '</form>' +
-        '<button class="link" onclick="navigate(\'#/esqueci-senha\')" style="margin-top:4px">Esqueci minha senha</button>' +
-      '<button class="link" onclick="navigate(\'#/cadastro\')">Primeiro acesso? Cadastre sua senha</button>' +
+        (!_isAdminLogin ? (
+          '<button class="link" onclick="navigate(\'#/esqueci-senha\')" style="margin-top:4px">Esqueci minha senha</button>' +
+          '<button class="link" onclick="navigate(\'#/cadastro\')">Primeiro acesso? Cadastre sua senha</button>'
+        ) : '') +
+        '<div style="margin-top:' + (_isAdminLogin ? '16' : '4') + 'px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.08)">' +
+          '<button class="link" onclick="toggleAdminLogin()" style="font-size:13px">' +
+            (_isAdminLogin ? '&#8592; Acesso do Cliente' : '&#128272; Acesso Administrativo') +
+          '</button>' +
+        '</div>' +
         '<div id="installArea" class="install-area' + (estaInstalado() && !deferredPrompt ? ' hidden' : '') + '">' +
           '<button class="link" id="installLink" onclick="handleInstallClick()">Instalar o sistema no dispositivo local</button>' +
         '</div>' +
       '</div>' +
     '</div>';
 
-  document.getElementById('cpfInput').addEventListener('input', function() {
-    this.value = formatarCpf(this.value);
-  });
-  document.getElementById('loginForm').addEventListener('submit', handleLogin);
+  if (!_isAdminLogin) {
+    document.getElementById('cpfInput').addEventListener('input', function() {
+      this.value = formatarCpf(this.value);
+    });
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+  } else {
+    document.getElementById('loginForm').addEventListener('submit', handleAdminLogin);
+  }
 }
 
 async function handleLogin(e) {
@@ -140,6 +169,48 @@ async function handleLogin(e) {
     errEl.classList.remove('hidden');
     btn.disabled = false;
     btn.textContent = 'ENTRAR';
+  }
+}
+
+async function handleAdminLogin(e) {
+  e.preventDefault();
+  var email = document.getElementById('adminEmailInput').value.trim().toLowerCase();
+  var senha = document.getElementById('senhaInput').value;
+  var errEl = document.getElementById('loginError');
+  var btn = document.getElementById('loginBtn');
+
+  errEl.classList.add('hidden');
+  if (!email || !senha) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
+  if (!email.includes('@')) { errEl.textContent = 'Email inválido'; errEl.classList.remove('hidden'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
+
+  try {
+    var sb = getSupabase();
+    if (!sb) { errEl.textContent = 'Erro de conexão. Tente novamente.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR COMO ADMIN'; return; }
+
+    var auth = await sb.auth.signInWithPassword({ email: email, password: senha });
+    if (auth.error) { errEl.textContent = 'Email ou senha incorretos'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR COMO ADMIN'; return; }
+
+    await carregarDadosCliente();
+
+    if (AppState.isAdmin) {
+      navigate('#/admin');
+    } else {
+      await sb.auth.signOut();
+      AppState.user = null;
+      AppState.isAdmin = false;
+      errEl.textContent = 'Este usuário não possui acesso administrativo.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'ENTRAR COMO ADMIN';
+    }
+  } catch (err) {
+    errEl.textContent = 'Erro ao conectar. Tente novamente.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'ENTRAR COMO ADMIN';
   }
 }
 

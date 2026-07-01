@@ -4,6 +4,8 @@ const AppState = {
   mensalidades: [],
   configBanco: null,
   falecidos: [],
+  isAdmin: false,
+  adminUser: null,
 };
 
 function showToast(message) {
@@ -58,6 +60,20 @@ async function carregarDadosCliente() {
     if (!user) return;
     AppState.user = user;
 
+    var admin = (await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle()).data;
+    if (admin) {
+      AppState.isAdmin = true;
+      AppState.adminUser = admin;
+      AppState.cliente = null;
+      AppState.mensalidades = [];
+      var config = (await sb.from('config_banco').select().eq('ativo', true).limit(1).maybeSingle()).data;
+      AppState.configBanco = config;
+      return;
+    }
+
+    AppState.isAdmin = false;
+    AppState.adminUser = null;
+
     var cliente = (await sb.from('clientes').select().eq('email', user.email).maybeSingle()).data;
     AppState.cliente = cliente;
 
@@ -98,12 +114,17 @@ async function handleRoute() {
       return;
     }
 
-    if (session && !AppState.cliente) {
+    if (session && !AppState.cliente && !AppState.isAdmin) {
       await carregarDadosCliente();
     }
 
     var parts = hash.replace('#', '').split('?');
     var route = parts[0].replace(/\/$/, '');
+
+    if (session && AppState.isAdmin && route === '/dashboard') {
+      navigate('#/admin');
+      return;
+    }
 
     switch (route) {
       case '/login': renderLogin(); break;
@@ -115,6 +136,7 @@ async function handleRoute() {
       case '/falecido': renderFalecidoDetalhe(parts[1] ? parts[1].replace('id=', '') : null); break;
       case '/mensalidades': renderMensalidades(); break;
       case '/boleto': renderBoleto(parts[1] ? parts[1].replace('id=', '') : null); break;
+      case '/admin': if (AppState.isAdmin) renderAdminDashboard(); else navigate('#/login'); break;
       default: renderLogin();
     }
   } catch (e) {
