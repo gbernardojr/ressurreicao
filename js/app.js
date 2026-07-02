@@ -2,6 +2,8 @@ const AppState = {
   user: null,
   cliente: null,
   mensalidades: [],
+  todosJazigos: [],
+  jazigoSelecionado: null,
   configBanco: null,
   falecidos: [],
   isAdmin: false,
@@ -78,8 +80,31 @@ async function carregarDadosCliente() {
     AppState.cliente = cliente;
 
     if (cliente) {
-      var mensalidades = (await sb.from('mensalidades').select().eq('cliente_id', cliente.id).order('vecto', { ascending: true })).data;
-      AppState.mensalidades = mensalidades || [];
+      var cpfCnpj = cliente.cpf_cnpj;
+      AppState.todosJazigos = [];
+      AppState.jazigoSelecionado = null;
+
+      if (cpfCnpj) {
+        var { data: todos } = await sb.from('clientes').select('id, codigo_propri').eq('cpf_cnpj', cpfCnpj);
+        var todosIds = (todos || []).map(function(c) { return c.id; });
+        if (todosIds.length <= 1) todosIds = [cliente.id];
+        var { data: mensalidades } = await sb.from('mensalidades')
+          .select()
+          .in('cliente_id', todosIds)
+          .order('vecto', { ascending: true });
+        AppState.mensalidades = mensalidades || [];
+
+        var jazigosSet = {};
+        (AppState.mensalidades || []).forEach(function(m) {
+          if (m.jazigo) jazigosSet[m.jazigo] = true;
+        });
+        AppState.todosJazigos = Object.keys(jazigosSet).sort();
+        AppState.jazigoSelecionado = null;
+      } else {
+        var { data: mensalidades } = await sb.from('mensalidades').select().eq('cliente_id', cliente.id).order('vecto', { ascending: true });
+        AppState.mensalidades = mensalidades || [];
+      }
+
       var config = (await sb.from('config_banco').select().eq('ativo', true).limit(1).maybeSingle()).data;
       AppState.configBanco = config;
     }
@@ -93,6 +118,21 @@ async function carregarFalecidos() {
     var falecidos = (await sb.from('falecidos').select().eq('cliente_id', AppState.cliente.id).order('nome', { ascending: true })).data;
     AppState.falecidos = falecidos || [];
   } catch (e) { console.error('Erro carregar falecidos:', e); }
+}
+
+function selecionarJazigo(jazigo) {
+  AppState.jazigoSelecionado = jazigo || null;
+  var hash = window.location.hash.replace('#', '') || '/dashboard';
+  if (hash === '/dashboard') renderDashboard();
+  else if (hash === '/mensalidades') renderMensalidades();
+}
+
+function getMensalidadesFiltradas() {
+  var lista = AppState.mensalidades;
+  if (AppState.jazigoSelecionado) {
+    lista = lista.filter(function(m) { return m.jazigo === AppState.jazigoSelecionado; });
+  }
+  return lista;
 }
 
 function navigate(hash) {

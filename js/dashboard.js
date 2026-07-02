@@ -15,11 +15,24 @@ function renderDashboard() {
     return;
   }
 
+  var jazigoHtml = '';
+  if (AppState.todosJazigos && AppState.todosJazigos.length > 1) {
+    jazigoHtml = '<div class="jazigo-selector" style="margin:12px 0;padding:8px 16px;background:#f8f9fa;border-radius:8px;display:flex;align-items:center;gap:8px">' +
+      '<label style="font-size:14px;color:#555;white-space:nowrap">Jazigo:</label>' +
+      '<select onchange="selecionarJazigo(this.value)" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:#fff">' +
+        '<option value="">Todos os jazigos</option>' +
+        AppState.todosJazigos.map(function(j) {
+          return '<option value="' + j + '"' + (AppState.jazigoSelecionado === j ? ' selected' : '') + '>Jazigo ' + j + '</option>';
+        }).join('') +
+      '</select></div>';
+  }
+
   content.innerHTML =
     '<div class="home-container">' +
       '<img src="images/logo.jpg" alt="Ressurreição" class="home-logo" onerror="this.style.display=\'none\'">' +
       '<div class="home-welcome">Ol\u00e1, ' + nome.split(' ')[0] + '</div>' +
       '<div class="home-subtitle">' + (AppState.cliente.codigo_propri ? 'C\u00f3digo: ' + AppState.cliente.codigo_propri : '') + '</div>' +
+      jazigoHtml +
       '<div class="home-menu">' +
         '<button class="home-menu-btn" onclick="navigate(\'#/dados_pessoais\')">' +
           '<div class="icon-box" style="background:#E3F2FD;color:#2B6CB0">&#128100;</div>' +

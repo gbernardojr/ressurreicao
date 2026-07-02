@@ -153,8 +153,11 @@ async function handleLogin(e) {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão. Tente novamente.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
 
-    var busca = await sb.from('clientes').select('id, email, nome').eq('cpf_cnpj', cpf).maybeSingle();
-    var cliente = busca.data;
+    var { data: clientesList } = await sb.from('clientes').select('id, email, nome').eq('cpf_cnpj', cpf);
+    var cliente = null;
+    if (clientesList && clientesList.length > 0) {
+      cliente = clientesList.find(function(c) { return c.email; }) || clientesList[0];
+    }
 
     if (!cliente) { errEl.textContent = 'CPF não encontrado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
     if (!cliente.email) { errEl.textContent = 'Cliente sem email cadastrado. Entre em contato.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
@@ -280,8 +283,8 @@ async function handleEsqueciSenha(e) {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
 
-    var busca = await sb.from('clientes').select('id, email, nome').eq('cpf_cnpj', cpf).maybeSingle();
-    var cliente = busca.data;
+    var { data: clientesList } = await sb.from('clientes').select('id, email, nome').eq('cpf_cnpj', cpf);
+    var cliente = clientesList && clientesList.length > 0 ? clientesList.find(function(c) { return c.email; }) || clientesList[0] : null;
 
     if (!cliente) { errEl.textContent = 'CPF não encontrado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
     if (!cliente.email) { errEl.textContent = 'Cliente sem e-mail cadastrado. Procure a recepção.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
@@ -329,8 +332,8 @@ async function handleCadastro(e) {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
 
-    var busca = await sb.from('clientes').select('id, email, cpf_cnpj').eq('cpf_cnpj', cpf).maybeSingle();
-    var cliente = busca.data;
+    var { data: clientesList } = await sb.from('clientes').select('id, email, cpf_cnpj').eq('cpf_cnpj', cpf);
+    var cliente = clientesList && clientesList.length > 0 ? clientesList.find(function(c) { return c.email; }) || clientesList[0] : null;
     if (!cliente) { errEl.textContent = 'CPF não encontrado. Procure a recepção.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
     if (cliente.email) { errEl.textContent = 'Este CPF já possui cadastro.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
 

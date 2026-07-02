@@ -31,7 +31,7 @@ function filtrarMensalidades(filter, btn) {
 
 function renderMensalidadesList() {
   var container = document.getElementById('mensalidadesList');
-  var filtered = AppState.mensalidades;
+  var filtered = getMensalidadesFiltradas();
 
   var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   if (_mensalidadesFilter === 'em_aberto') filtered = filtered.filter(function(m) { return !m.pago && parseDateSafe(m.vecto) >= hoje; });
