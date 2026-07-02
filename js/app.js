@@ -149,7 +149,7 @@ async function handleRoute() {
       session = r.data ? r.data.session : null;
     }
 
-    if (!session && hash !== '#/login' && hash !== '#/cadastro' && hash !== '#/esqueci-senha') {
+    if (!session && hash !== '#/login' && hash !== '#/cadastro' && hash !== '#/esqueci-senha' && hash !== '#/admin-login') {
       navigate('#/login');
       return;
     }
@@ -161,15 +161,11 @@ async function handleRoute() {
     var parts = hash.replace('#', '').split('?');
     var route = parts[0].replace(/\/$/, '');
 
-    if (session && AppState.isAdmin && route === '/dashboard') {
-      navigate('#/admin');
-      return;
-    }
-
     switch (route) {
       case '/login': renderLogin(); break;
       case '/cadastro': renderCadastro(); break;
       case '/esqueci-senha': renderEsqueciSenha(); break;
+      case '/admin-login': renderAdminLogin(); break;
       case '/dashboard': renderDashboard(); break;
       case '/dados_pessoais': renderDadosPessoais(); break;
       case '/falecidos': renderFalecidos(); break;

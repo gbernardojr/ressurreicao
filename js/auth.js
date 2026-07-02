@@ -71,13 +71,6 @@ function showInstallInstructions() {
   document.body.appendChild(overlay);
 }
 
-var _isAdminLogin = false;
-
-function toggleAdminLogin() {
-  _isAdminLogin = !_isAdminLogin;
-  renderLogin();
-}
-
 function renderLogin() {
   var app = document.getElementById('app');
   app.innerHTML =
@@ -88,51 +81,56 @@ function renderLogin() {
       '</div>' +
       '<div class="login-card">' +
         '<form id="loginForm">' +
-          (_isAdminLogin ? (
-            '<div class="form-group"><div class="input-icon">' +
-              '<span class="icon">&#9993;</span>' +
-              '<input type="email" id="adminEmailInput" class="form-input" placeholder="Email do administrador" autocomplete="email">' +
-            '</div></div>' +
-            '<div class="form-group"><div class="input-icon">' +
-              '<span class="icon">&#128274;</span>' +
-              '<input type="password" id="senhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
-            '</div></div>'
-          ) : (
-            '<div class="form-group"><div class="input-icon">' +
-              '<span class="icon">&#128100;</span>' +
-              '<input type="text" id="cpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="username">' +
-            '</div></div>' +
-            '<div class="form-group"><div class="input-icon">' +
-              '<span class="icon">&#128274;</span>' +
-              '<input type="password" id="senhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
-            '</div></div>'
-          )) +
+          '<div class="form-group"><div class="input-icon">' +
+            '<span class="icon">&#128100;</span>' +
+            '<input type="text" id="cpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="username">' +
+          '</div></div>' +
+          '<div class="form-group"><div class="input-icon">' +
+            '<span class="icon">&#128274;</span>' +
+            '<input type="password" id="senhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
+          '</div></div>' +
           '<div id="loginError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
-          '<button type="submit" id="loginBtn" class="btn btn-primary">' + (_isAdminLogin ? 'ENTRAR COMO ADMIN' : 'ENTRAR') + '</button>' +
+          '<button type="submit" id="loginBtn" class="btn btn-primary">ENTRAR</button>' +
         '</form>' +
-        (!_isAdminLogin ? (
-          '<button class="link" onclick="navigate(\'#/esqueci-senha\')" style="margin-top:4px">Esqueci minha senha</button>' +
-          '<button class="link" onclick="navigate(\'#/cadastro\')">Primeiro acesso? Cadastre sua senha</button>'
-        ) : '') +
-        '<div style="margin-top:' + (_isAdminLogin ? '16' : '4') + 'px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.08)">' +
-          '<button class="link" onclick="toggleAdminLogin()" style="font-size:13px">' +
-            (_isAdminLogin ? '&#8592; Acesso do Cliente' : '&#128272; Acesso Administrativo') +
-          '</button>' +
-        '</div>' +
+        '<button class="link" onclick="navigate(\'#/esqueci-senha\')" style="margin-top:4px">Esqueci minha senha</button>' +
+        '<button class="link" onclick="navigate(\'#/cadastro\')">Primeiro acesso? Cadastre sua senha</button>' +
         '<div id="installArea" class="install-area' + (estaInstalado() && !deferredPrompt ? ' hidden' : '') + '">' +
           '<button class="link" id="installLink" onclick="handleInstallClick()">Instalar o sistema no dispositivo local</button>' +
         '</div>' +
       '</div>' +
     '</div>';
 
-  if (!_isAdminLogin) {
-    document.getElementById('cpfInput').addEventListener('input', function() {
-      this.value = formatarCpf(this.value);
-    });
-    document.getElementById('loginForm').addEventListener('submit', handleLogin);
-  } else {
-    document.getElementById('loginForm').addEventListener('submit', handleAdminLogin);
-  }
+  document.getElementById('cpfInput').addEventListener('input', function() {
+    this.value = formatarCpf(this.value);
+  });
+  document.getElementById('loginForm').addEventListener('submit', handleLogin);
+}
+
+function renderAdminLogin() {
+  var app = document.getElementById('app');
+  app.innerHTML =
+    '<div class="login-container">' +
+      '<div class="login-header">' +
+        '<img src="images/logo.jpg" alt="Ressurreição" class="logo" onerror="this.style.display=\'none\'">' +
+        '<h1>Administrativo</h1><p>Acesso restrito</p>' +
+      '</div>' +
+      '<div class="login-card">' +
+        '<form id="adminLoginForm">' +
+          '<div class="form-group"><div class="input-icon">' +
+            '<span class="icon">&#9993;</span>' +
+            '<input type="email" id="adminEmailInput" class="form-input" placeholder="Email do administrador" autocomplete="email">' +
+          '</div></div>' +
+          '<div class="form-group"><div class="input-icon">' +
+            '<span class="icon">&#128274;</span>' +
+            '<input type="password" id="adminSenhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
+          '</div></div>' +
+          '<div id="loginError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
+          '<button type="submit" id="loginBtn" class="btn btn-primary">ENTRAR COMO ADMIN</button>' +
+        '</form>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('adminLoginForm').addEventListener('submit', handleAdminLogin);
 }
 
 async function handleLogin(e) {
@@ -178,7 +176,7 @@ async function handleLogin(e) {
 async function handleAdminLogin(e) {
   e.preventDefault();
   var email = document.getElementById('adminEmailInput').value.trim().toLowerCase();
-  var senha = document.getElementById('senhaInput').value;
+  var senha = document.getElementById('adminSenhaInput').value;
   var errEl = document.getElementById('loginError');
   var btn = document.getElementById('loginBtn');
 
