@@ -161,7 +161,17 @@ async function handleLogin(e) {
     if (!cliente.email) { errEl.textContent = 'Cliente sem email cadastrado. Entre em contato.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
 
     var auth = await sb.auth.signInWithPassword({ email: cliente.email, password: senha });
-    if (auth.error) { errEl.textContent = 'Senha incorreta'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
+    if (auth.error) {
+      var msg = 'Email ou senha incorretos.';
+      if (auth.error.message && auth.error.message.includes('Invalid login')) {
+        msg += ' Se ainda não tem conta, clique em "Primeiro acesso".';
+      }
+      errEl.innerHTML = msg + ' <a href="#/cadastro" style="color:#1565C0;text-decoration:underline">Criar conta</a>';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'ENTRAR';
+      return;
+    }
 
     await carregarDadosCliente();
     navigate('#/dashboard');
@@ -318,7 +328,7 @@ async function handleCadastro(e) {
   errEl.classList.add('hidden');
   okEl.classList.add('hidden');
 
-  if (!cpf || !email || !senha || !confirma) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
+  if (!cpf || !senha || !confirma) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
   if (cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
   if (senha.length < 6) { errEl.textContent = 'Senha deve ter pelo menos 6 caracteres'; errEl.classList.remove('hidden'); return; }
   if (senha !== confirma) { errEl.textContent = 'As senhas não conferem'; errEl.classList.remove('hidden'); return; }
@@ -333,12 +343,28 @@ async function handleCadastro(e) {
     var { data: clientesList } = await sb.from('clientes').select('id, email, cpf_cnpj').eq('cpf_cnpj', cpf);
     var cliente = clientesList && clientesList.length > 0 ? clientesList.find(function(c) { return c.email; }) || clientesList[0] : null;
     if (!cliente) { errEl.textContent = 'CPF não encontrado. Procure a recepção.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
-    if (cliente.email) { errEl.textContent = 'Este CPF já possui cadastro.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
 
-    var auth = await sb.auth.signUp({ email: email, password: senha });
-    if (auth.error || !auth.data.user) { errEl.textContent = 'Erro ao criar conta.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
+    var emailFinal = cliente.email || email;
+    if (!emailFinal) { errEl.textContent = 'Informe um email para cadastro.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
 
-    await sb.from('clientes').update({ email: email }).eq('id', cliente.id);
+    var auth = await sb.auth.signUp({ email: emailFinal, password: senha });
+
+    if (auth.error) {
+      var msg = auth.error.message || '';
+      if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+        errEl.innerHTML = 'Esta conta já possui cadastro. <a href="#/esqueci-senha" style="color:#1565C0;text-decoration:underline">Esqueci minha senha</a>';
+      } else {
+        errEl.textContent = 'Erro ao criar conta: ' + msg;
+      }
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'CADASTRAR';
+      return;
+    }
+
+    if (!cliente.email && emailFinal) {
+      await sb.from('clientes').update({ email: emailFinal }).eq('id', cliente.id);
+    }
 
     okEl.textContent = 'Conta criada com sucesso! Agora você pode fazer login.';
     okEl.classList.remove('hidden');

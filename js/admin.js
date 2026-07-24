@@ -173,6 +173,11 @@ function renderAdminMensalidades() {
         '</div>' +
         '<button class="btn-icon" onclick="renderAdminDashboard()" style="color:#fff;font-size:20px" title="Nova consulta">&#x2716;</button>' +
       '</div>' +
+      (cliente.email ?
+        '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2)">' +
+          '<button class="btn" onclick="adminCriarContaAuth()" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;width:100%">&#128273; Criar conta de acesso para este cliente</button>' +
+          '<div id="adminContaAuthResult" style="margin-top:8px;font-size:13px"></div>' +
+        '</div>' : '') +
     '</div>';
 
   if (!mensalidades || mensalidades.length === 0) {
@@ -700,4 +705,46 @@ async function handleAdminLogout() {
   AppState.configBanco = null;
   AppState.isAdmin = false;
   navigate('#/login');
+}
+
+async function adminCriarContaAuth() {
+  var cliente = AdminState.selectedCliente;
+  var resultEl = document.getElementById('adminContaAuthResult');
+  if (!cliente || !resultEl) return;
+
+  if (!cliente.email) {
+    resultEl.innerHTML = '<span style="color:#FFCDD2">Cliente sem email cadastrado.</span>';
+    return;
+  }
+
+  resultEl.innerHTML = '<span style="color:#FFF9C4">Criando conta...</span>';
+
+  try {
+    var sb = getSupabase();
+    if (!sb) { resultEl.innerHTML = '<span style="color:#FFCDD2">Erro de conexão.</span>'; return; }
+
+    var tempSenha = 'Ress@' + new Date().getFullYear();
+
+    var auth = await sb.auth.signUp({ email: cliente.email, password: tempSenha });
+
+    if (auth.error) {
+      var msg = auth.error.message || '';
+      if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+        resultEl.innerHTML = '<span style="color:#FFF9C4">Conta já existe para este email.<br>O cliente pode usar <b>"Esqueci minha senha"</b> para redefinir.</span>';
+      } else {
+        resultEl.innerHTML = '<span style="color:#FFCDD2">Erro: ' + msg + '</span>';
+      }
+      return;
+    }
+
+    resultEl.innerHTML =
+      '<div style="background:rgba(255,255,255,0.15);padding:12px;border-radius:8px;margin-top:4px">' +
+        '<div style="font-weight:700;margin-bottom:8px">&#9989; Conta criada com sucesso!</div>' +
+        '<div><b>Email:</b> ' + cliente.email + '</div>' +
+        '<div><b>Senha temporária:</b> ' + tempSenha + '</div>' +
+        '<div style="margin-top:8px;font-size:12px;opacity:0.8">Informe estos dados ao cliente. Ele pode trocar a senha depois em "Esqueci minha senha".</div>' +
+      '</div>';
+  } catch (err) {
+    resultEl.innerHTML = '<span style="color:#FFCDD2">Erro ao conectar.</span>';
+  }
 }

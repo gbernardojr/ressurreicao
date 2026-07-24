@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar Contas de Acesso - Ressurreição</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 22px; margin-bottom: 8px; color: #1a237e; }
+    p.desc { color: #666; margin-bottom: 20px; font-size: 14px; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #4A90D9; color: #fff; }
+    .btn-primary:hover { background: #357ABD; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-danger { background: #D32F2F; color: #fff; }
+    .status { padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px; }
+    .status-ok { background: #E8F5E9; color: #2E7D32; }
+    .status-warn { background: #FFF3E0; color: #E65100; }
+    .status-err { background: #FFEBEE; color: #C62828; }
+    .status-info { background: #E3F2FD; color: #1565C0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f8f9fa; font-weight: 600; }
+    .progress { width: 100%; height: 8px; background: #eee; border-radius: 4px; margin-top: 12px; overflow: hidden; }
+    .progress-bar { height: 100%; background: #4A90D9; border-radius: 4px; transition: width 0.3s; }
+    #log { max-height: 400px; overflow-y: auto; margin-top: 12px; }
+    .log-entry { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+    .log-ok { color: #2E7D32; }
+    .log-warn { color: #E65100; }
+    .log-err { color: #C62828; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Criar Contas de Acesso</h1>
+    <p class="desc">Ferramenta para criar contas no Supabase Auth para clientes que possuem email mas não possuem conta de acesso.</p>
+
+    <div class="card">
+      <h3 style="margin-bottom:12px">Configuração</h3>
+      <p style="font-size:13px;color:#666;margin-bottom:12px">Senha temporária padrão para todas as contas criadas:</p>
+      <input type="text" id="tempSenha" value="Ress@2024" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:200px">
+      <div style="margin-top:12px">
+        <button class="btn btn-primary" id="btnIniciar" onclick="iniciar()">Carregar clientes sem conta</button>
+      </div>
+      <div id="statusInicial" class="hidden"></div>
+    </div>
+
+    <div id="areaClientes" class="card hidden">
+      <h3 style="margin-bottom:8px">Clientes encontrados: <span id="totalClientes">0</span></h3>
+      <p style="font-size:13px;color:#666;margin-bottom:12px">Clientes com email cadastrado que podem precisar de conta de acesso.</p>
+      <div style="margin-bottom:12px">
+        <button class="btn btn-primary" id="btnCriar" onclick="criarContas()">Criar todas as contas</button>
+        <button class="btn btn-danger" id="btnCancelar" onclick="cancelar()" class="hidden" style="margin-left:8px">Cancelar</button>
+      </div>
+      <div id="progressArea" class="hidden">
+        <div class="progress"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+        <p id="progressText" style="font-size:13px;color:#666;margin-top:8px"></p>
+      </div>
+      <div id="log"></div>
+    </div>
+
+    <div id="resultado" class="card hidden">
+      <h3 style="margin-bottom:12px">Resultado</h3>
+      <div id="resumo"></div>
+      <button class="btn btn-primary" onclick="copiarResultado()" style="margin-top:12px">Copiar resultado</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script>
+    var SUPABASE_URL = 'https://pfzulktbhivfkfzuvztd.supabase.co';
+    var SUPABASE_ANON_KEY = 'sb_publishable__GD7DmF9qF1_vFbHT-OMtw_oaa5dlct';
+    var sb = null;
+    var clientes = [];
+    var cancelado = false;
+    var resultados = [];
+
+    function init() {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    async function iniciar() {
+      var btn = document.getElementById('btnIniciar');
+      var statusEl = document.getElementById('statusInicial');
+      btn.disabled = true;
+      btn.textContent = 'Carregando...';
+      statusEl.className = 'status status-info';
+      statusEl.textContent = 'Consultando clientes...';
+      statusEl.classList.remove('hidden');
+
+      try {
+        var { data, error } = await sb.from('clientes').select('id, nome, email, cpf_cnpj').not('email', 'is', null).order('nome');
+
+        if (error) { statusEl.className = 'status status-err'; statusEl.textContent = 'Erro: ' + error.message; btn.disabled = false; btn.textContent = 'Carregar clientes sem conta'; return; }
+
+        clientes = data || [];
+        statusEl.className = 'status status-ok';
+        statusEl.textContent = clientes.length + ' clientes com email encontrados.';
+        document.getElementById('totalClientes').textContent = clientes.length;
+        document.getElementById('areaClientes').classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Recarregar';
+      } catch (e) {
+        statusEl.className = 'status status-err'; statusEl.textContent = 'Erro ao conectar.';
+        btn.disabled = false; btn.textContent = 'Carregar clientes sem conta';
+      }
+    }
+
+    async function criarContas() {
+      cancelado = false;
+      resultados = [];
+      var btnCriar = document.getElementById('btnCriar');
+      var btnCancelar = document.getElementById('btnCancelar');
+      var progressArea = document.getElementById('progressArea');
+      var logEl = document.getElementById('log');
+      var resultadoEl = document.getElementById('resultado');
+
+      btnCriar.disabled = true;
+      btnCancelar.classList.remove('hidden');
+      progressArea.classList.remove('hidden');
+      resultadoEl.classList.add('hidden');
+      logEl.innerHTML = '';
+
+      var senha = document.getElementById('tempSenha').value || 'Ress@2024';
+      var total = clientes.length;
+      var criadas = 0;
+      var existentes = 0;
+      var erros = 0;
+
+      for (var i = 0; i < total; i++) {
+        if (cancelado) {
+          addLog('Processo cancelado pelo usuário.', 'warn');
+          break;
+        }
+
+        var c = clientes[i];
+        var pct = Math.round(((i + 1) / total) * 100);
+        document.getElementById('progressBar').style.width = pct + '%';
+        document.getElementById('progressText').textContent = (i + 1) + ' de ' + total + ' — ' + c.nome;
+
+        try {
+          var auth = await sb.auth.signUp({ email: c.email, password: senha });
+
+          if (auth.error) {
+            var msg = auth.error.message || '';
+            if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+              addLog(c.nome + ' (' + c.email + ') — Conta já existente', 'warn');
+              existentes++;
+              resultados.push({ nome: c.nome, email: c.email, status: 'ja_existe' });
+            } else {
+              addLog(c.nome + ' (' + c.email + ') — Erro: ' + msg, 'err');
+              erros++;
+              resultados.push({ nome: c.nome, email: c.email, status: 'erro', msg: msg });
+            }
+          } else {
+            addLog(c.nome + ' (' + c.email + ') — Conta criada', 'ok');
+            criadas++;
+            resultados.push({ nome: c.nome, email: c.email, senha: senha, status: 'criada' });
+          }
+        } catch (e) {
+          addLog(c.nome + ' (' + c.email + ') — Erro de conexão', 'err');
+          erros++;
+          resultados.push({ nome: c.nome, email: c.email, status: 'erro', msg: 'conexao' });
+        }
+
+        await new Promise(function(r) { setTimeout(r, 500); });
+      }
+
+      btnCriar.disabled = false;
+      btnCancelar.classList.add('hidden');
+
+      var resumoEl = document.getElementById('resumo');
+      resumoEl.innerHTML =
+        '<div class="status status-ok" style="margin-bottom:8px">Criadas: ' + criadas + '</div>' +
+        '<div class="status status-warn" style="margin-bottom:8px">Já existentes: ' + existentes + '</div>' +
+        '<div class="status status-err">Erros: ' + erros + '</div>';
+      resultadoEl.classList.remove('hidden');
+    }
+
+    function cancelar() {
+      cancelado = true;
+    }
+
+    function addLog(msg, tipo) {
+      var logEl = document.getElementById('log');
+      var div = document.createElement('div');
+      div.className = 'log-entry log-' + tipo;
+      div.textContent = msg;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function copiarResultado() {
+      var texto = 'RESULTADO - Criação de Contas de Acesso\n';
+      texto += '==========================================\n\n';
+      resultados.forEach(function(r) {
+        texto += r.nome + ' | ' + r.email;
+        if (r.status === 'criada') texto += ' | Senha: ' + r.senha;
+        if (r.status === 'ja_existe') texto += ' | Já existente';
+        if (r.status === 'erro') texto += ' | Erro: ' + r.msg;
+        texto += '\n';
+      });
+
+      var ta = document.createElement('textarea');
+      ta.value = texto;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('Resultado copiado para a área de transferência!');
+    }
+
+    init();
+  </script>
+</body>
+</html>

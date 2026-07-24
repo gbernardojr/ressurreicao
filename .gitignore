@@ -9,4 +9,7 @@
 !/vercel.json
 !/script.sql
 !/sql
+!/admin-criar-contas.html
 !.gitignore
+
+.vercel
