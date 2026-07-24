@@ -149,7 +149,7 @@ async function handleRoute() {
       session = r.data ? r.data.session : null;
     }
 
-    if (!session && hash !== '#/login' && hash !== '#/cadastro' && hash !== '#/esqueci-senha' && hash !== '#/admin-login') {
+    if (!session && hash !== '#/login' && hash !== '#/cadastro' && hash !== '#/esqueci-senha' && hash !== '#/admin-login' && !hash.startsWith('#/redefinir-senha')) {
       navigate('#/login');
       return;
     }
@@ -165,6 +165,7 @@ async function handleRoute() {
       case '/login': renderLogin(); break;
       case '/cadastro': renderCadastro(); break;
       case '/esqueci-senha': renderEsqueciSenha(); break;
+      case '/redefinir-senha': renderRedefinirSenha(); break;
       case '/admin-login': renderAdminLogin(); break;
       case '/dashboard': renderDashboard(); break;
       case '/dados_pessoais': renderDadosPessoais(); break;

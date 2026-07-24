@@ -298,7 +298,7 @@ async function handleEsqueciSenha(e) {
     if (!cliente.email) { errEl.textContent = 'Cliente sem e-mail cadastrado. Procure a recepção.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
 
     var auth = await sb.auth.resetPasswordForEmail(cliente.email, {
-      redirectTo: window.location.origin + '/#/login',
+      redirectTo: window.location.origin + '/#/redefinir-senha',
     });
 
     if (auth.error) { errEl.textContent = 'Erro ao enviar e-mail. Tente novamente.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
@@ -312,6 +312,81 @@ async function handleEsqueciSenha(e) {
     errEl.classList.remove('hidden');
     btn.disabled = false;
     btn.textContent = 'ENVIAR LINK';
+  }
+}
+
+function renderRedefinirSenha() {
+  var app = document.getElementById('app');
+  app.innerHTML =
+    '<div class="login-container">' +
+      '<div class="login-header">' +
+        '<img src="images/logo.jpg" alt="Ressurreição" class="logo" onerror="this.style.display=\'none\'">' +
+        '<h1>Redefinir Senha</h1>' +
+      '</div>' +
+      '<div class="login-card">' +
+        '<form id="redefinirSenhaForm">' +
+          '<div class="form-group"><div class="input-icon">' +
+            '<span class="icon">&#128274;</span>' +
+            '<input type="password" id="novaSenhaInput" class="form-input" placeholder="Nova senha (mínimo 6 caracteres)" autocomplete="new-password">' +
+          '</div></div>' +
+          '<div class="form-group"><div class="input-icon">' +
+            '<span class="icon">&#128274;</span>' +
+            '<input type="password" id="confirmaSenhaInput" class="form-input" placeholder="Confirmar nova senha" autocomplete="new-password">' +
+          '</div></div>' +
+          '<div id="redefinirError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
+          '<div id="redefinirSuccess" class="hidden" style="color:#388E3C;background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
+          '<button type="submit" id="redefinirBtn" class="btn btn-primary">REDEFINIR SENHA</button>' +
+        '</form>' +
+        '<button class="link" onclick="navigate(\'#/login\')" style="margin-top:4px">Voltar ao login</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('redefinirSenhaForm').addEventListener('submit', handleRedefinirSenha);
+}
+
+async function handleRedefinirSenha(e) {
+  e.preventDefault();
+  var novaSenha = document.getElementById('novaSenhaInput').value;
+  var confirmaSenha = document.getElementById('confirmaSenhaInput').value;
+  var errEl = document.getElementById('redefinirError');
+  var okEl = document.getElementById('redefinirSuccess');
+  var btn = document.getElementById('redefinirBtn');
+
+  errEl.classList.add('hidden');
+  okEl.classList.add('hidden');
+
+  if (!novaSenha || !confirmaSenha) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
+  if (novaSenha.length < 6) { errEl.textContent = 'Senha deve ter pelo menos 6 caracteres'; errEl.classList.remove('hidden'); return; }
+  if (novaSenha !== confirmaSenha) { errEl.textContent = 'As senhas não conferem'; errEl.classList.remove('hidden'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Redefinindo...';
+
+  try {
+    var sb = getSupabase();
+    if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'REDEFINIR SENHA'; return; }
+
+    var { data, error } = await sb.auth.updateUser({ password: novaSenha });
+
+    if (error) {
+      errEl.textContent = 'Erro ao redefinir senha: ' + (error.message || 'Tente novamente.');
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'REDEFINIR SENHA';
+      return;
+    }
+
+    okEl.textContent = 'Senha redefinida com sucesso!';
+    okEl.classList.remove('hidden');
+    btn.disabled = true;
+    btn.textContent = 'REDEFINIDA';
+
+    setTimeout(function() { navigate('#/login'); }, 2000);
+  } catch (err) {
+    errEl.textContent = 'Erro ao conectar. Tente novamente.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'REDEFINIR SENHA';
   }
 }
 
