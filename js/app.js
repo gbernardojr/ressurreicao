@@ -64,8 +64,12 @@ async function carregarDadosCliente() {
     alert('[DEBUG] Email auth: ' + user.email);
 
     console.log('[DEBUG] Buscando admin para email:', user.email);
-    var admin = (await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle()).data;
-    console.log('[DEBUG] Admin encontrado:', admin);
+    var admin = null;
+    try {
+      var adminResult = await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle();
+      admin = adminResult.data;
+      console.log('[DEBUG] Admin encontrado:', admin);
+    } catch (e) { console.error('[DEBUG] Erro query admin:', e); }
     if (admin) {
       AppState.isAdmin = true;
       AppState.adminUser = admin;
@@ -119,7 +123,7 @@ async function carregarDadosCliente() {
       var config = (await sb.from('config_banco').select().eq('ativo', true).limit(1).maybeSingle()).data;
       AppState.configBanco = config;
     }
-  } catch (e) { console.error('Erro carregar dados:', e); }
+  } catch (e) { console.error('Erro carregar dados:', e); alert('[DEBUG] ERRO carregarDadosCliente: ' + e.message); }
 }
 
 async function carregarFalecidos() {
