@@ -70,14 +70,10 @@ async function carregarDadosCliente() {
         cpfCnpj = authCliente.data ? authCliente.data.cpf_cnpj : null;
       } catch (e) {}
 
-      var adminQuery = sb.from('admin_usuarios').select().eq('ativo', true);
       if (cpfCnpj) {
-        adminQuery = adminQuery.or('email.eq.' + user.email + ',cpf.eq.' + cpfCnpj);
-      } else {
-        adminQuery = adminQuery.eq('email', user.email);
+        var adminResult = await sb.from('admin_usuarios').select().eq('cpf', cpfCnpj).eq('ativo', true).maybeSingle();
+        admin = adminResult.data;
       }
-      var adminResult = await adminQuery.maybeSingle();
-      admin = adminResult.data;
     } catch (e) { console.error('Erro query admin:', e); }
     if (admin) {
       AppState.isAdmin = true;
