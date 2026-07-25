@@ -25,6 +25,33 @@ CREATE POLICY "admin_select_self" ON admin_usuarios
   FOR SELECT TO authenticated
   USING (email = auth.email());
 
+-- 2b. Permitir admin listar todos os admins
+DROP POLICY IF EXISTS "admin_select_all_admins" ON admin_usuarios;
+CREATE POLICY "admin_select_all_admins" ON admin_usuarios
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  );
+
+-- 2c. Permitir admin cadastrar novos admins
+DROP POLICY IF EXISTS "admin_insert_admins" ON admin_usuarios;
+CREATE POLICY "admin_insert_admins" ON admin_usuarios
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  );
+
+-- 2d. Permitir admin ativar/desativar outros admins
+DROP POLICY IF EXISTS "admin_update_admins" ON admin_usuarios;
+CREATE POLICY "admin_update_admins" ON admin_usuarios
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  );
+
 -- 3. Permitir admin visualizar todos os clientes
 --    (junta com a política existente que só permite ver o próprio)
 DROP POLICY IF EXISTS "admin_select_all_clientes" ON clientes;

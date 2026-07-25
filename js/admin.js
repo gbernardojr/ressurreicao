@@ -42,6 +42,9 @@ function renderAdminDashboard() {
       '</div>' +
       '<div id="adminSearchResults"></div>' +
       '<div id="adminMensalidadesArea"></div>' +
+      '<div class="card" style="margin-top:16px">' +
+        '<button class="btn btn-outline" onclick="renderAdminGerenciar()" style="width:100%">⚙️ Gerenciar Administradores</button>' +
+      '</div>' +
     '</div>';
 
   document.getElementById('adminSearchInput').addEventListener('input', function() {
@@ -747,4 +750,162 @@ async function adminCriarContaAuth() {
   } catch (err) {
     resultEl.innerHTML = '<span style="color:#FFCDD2">Erro ao conectar.</span>';
   }
+}
+
+async function renderAdminGerenciar() {
+  var app = document.getElementById('app');
+  app.innerHTML =
+    '<div class="app-bar"><button class="btn-icon" onclick="renderAdminDashboard()">&#8592;</button><span class="title">Gerenciar Admins</span></div>' +
+    '<div class="main-content">' +
+      '<div id="adminListaArea"><div class="spinner"></div></div>' +
+      '<div class="card" style="margin-top:16px">' +
+        '<h3 style="font-size:16px;margin-bottom:12px">Novo Administrador</h3>' +
+        '<p style="font-size:13px;color:#757575;margin-bottom:12px">O cliente precisa já existir na tabela de clientes (com email) para poder ser promovido a admin.</p>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF do cliente</label><input type="text" id="adminNovoCpf" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nome</label><input type="text" id="adminNovoNome" class="form-input" placeholder="Nome do administrador"></div>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Email (do Auth)</label><input type="email" id="adminNovoEmail" class="form-input" placeholder="email@exemplo.com"></div>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Senha temporária</label><input type="text" id="adminNovoSenha" class="form-input" value="Ress@2024"></div>' +
+        '<div id="adminNovoError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:12px;font-size:14px"></div>' +
+        '<div id="adminNovoSuccess" class="hidden" style="color:#388E3C;background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:12px;font-size:14px"></div>' +
+        '<button class="btn btn-primary" onclick="handleAdminCadastrarNovo()" id="adminNovoBtn">CADASTRAR ADMIN</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('adminNovoCpf').addEventListener('input', function() { this.value = formatarCpf(this.value); });
+
+  await carregarListaAdmins();
+}
+
+async function carregarListaAdmins() {
+  var area = document.getElementById('adminListaArea');
+  try {
+    var sb = getSupabase();
+    if (!sb) { area.innerHTML = '<p style="color:#D32F2F">Erro de conexão.</p>'; return; }
+    var { data, error } = await sb.from('admin_usuarios').select('*').order('nome');
+    if (error) { area.innerHTML = '<p style="color:#D32F2F">Erro: ' + error.message + '</p>'; return; }
+    var lista = data || [];
+    if (lista.length === 0) {
+      area.innerHTML = '<div class="card"><p style="color:#757575;text-align:center">Nenhum administrador cadastrado.</p></div>';
+      return;
+    }
+    var html = '<div class="card"><h3 style="font-size:16px;margin-bottom:12px">Administradores (' + lista.length + ')</h3>';
+    lista.forEach(function(a) {
+      var statusCor = a.ativo ? '#388E3C' : '#D32F2F';
+      var statusTxt = a.ativo ? 'Ativo' : 'Inativo';
+      html +=
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0">' +
+          '<div style="flex:1">' +
+            '<div style="font-weight:600">' + (a.nome || '-') + '</div>' +
+            '<div style="font-size:13px;color:#757575">' + (a.email || '-') + '</div>' +
+            '<div style="font-size:13px;color:#757575">' + (a.cpf ? formatarCpf(a.cpf) : 'Sem CPF') + '</div>' +
+            '<div style="font-size:12px;color:' + statusCor + ';font-weight:600">' + statusTxt + '</div>' +
+          '</div>' +
+          '<div>' +
+            (a.ativo
+              ? '<button class="btn btn-outline" onclick="handleAdminDesativar(\'' + a.id + '\', \'' + (a.nome || '') + '\')" style="font-size:12px;padding:6px 12px;color:#D32F2F;border-color:#D32F2F">Desativar</button>'
+              : '<button class="btn btn-outline" onclick="handleAdminAtivar(\'' + a.id + '\')" style="font-size:12px;padding:6px 12px;color:#388E3C;border-color:#388E3C">Ativar</button>') +
+          '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    area.innerHTML = html;
+  } catch (e) {
+    area.innerHTML = '<p style="color:#D32F2F">Erro ao carregar lista.</p>';
+  }
+}
+
+async function handleAdminCadastrarNovo() {
+  var cpf = document.getElementById('adminNovoCpf').value.replace(/\D/g, '');
+  var nome = document.getElementById('adminNovoNome').value.trim();
+  var email = document.getElementById('adminNovoEmail').value.trim().toLowerCase();
+  var senha = document.getElementById('adminNovoSenha').value;
+  var errEl = document.getElementById('adminNovoError');
+  var okEl = document.getElementById('adminNovoSuccess');
+  var btn = document.getElementById('adminNovoBtn');
+
+  errEl.classList.add('hidden');
+  okEl.classList.add('hidden');
+
+  if (!cpf || cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
+  if (!nome) { errEl.textContent = 'Informe o nome'; errEl.classList.remove('hidden'); return; }
+  if (!email || !email.includes('@')) { errEl.textContent = 'Email inválido'; errEl.classList.remove('hidden'); return; }
+  if (!senha || senha.length < 6) { errEl.textContent = 'Senha deve ter pelo menos 6 caracteres'; errEl.classList.remove('hidden'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Cadastrando...';
+
+  try {
+    var sb = getSupabase();
+    if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR ADMIN'; return; }
+
+    var { data: existente } = await sb.from('admin_usuarios').select('id').eq('cpf', cpf).maybeSingle();
+    if (existente) { errEl.textContent = 'Este CPF já é administrador.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR ADMIN'; return; }
+
+    var { error: authErr } = await sb.auth.signUp({ email: email, password: senha });
+    if (authErr) {
+      var msg = authErr.message || '';
+      if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+        okEl.textContent = 'Conta Auth já existe para este email. Inserindo como admin...';
+        okEl.classList.remove('hidden');
+      } else {
+        errEl.textContent = 'Erro ao criar conta Auth: ' + msg;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'CADASTRAR ADMIN';
+        return;
+      }
+    }
+
+    var { error: insertErr } = await sb.from('admin_usuarios').insert({
+      nome: nome,
+      email: email,
+      cpf: cpf,
+      ativo: true
+    });
+
+    if (insertErr) {
+      errEl.textContent = 'Erro ao cadastrar admin: ' + (insertErr.message || 'Erro desconhecido');
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'CADASTRAR ADMIN';
+      return;
+    }
+
+    okEl.innerHTML = '<b>' + nome + '</b> cadastrado como administrador com sucesso!';
+    okEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'CADASTRAR ADMIN';
+
+    document.getElementById('adminNovoCpf').value = '';
+    document.getElementById('adminNovoNome').value = '';
+    document.getElementById('adminNovoEmail').value = '';
+
+    await carregarListaAdmins();
+  } catch (err) {
+    errEl.textContent = 'Erro ao conectar. Tente novamente.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'CADASTRAR ADMIN';
+  }
+}
+
+async function handleAdminDesativar(id, nome) {
+  if (!confirm('Desativar o administrador "' + nome + '"? Ele não poderá mais acessar como admin.')) return;
+  try {
+    var sb = getSupabase();
+    if (!sb) return;
+    var { error } = await sb.from('admin_usuarios').update({ ativo: false }).eq('id', id);
+    if (error) { alert('Erro: ' + error.message); return; }
+    await carregarListaAdmins();
+  } catch (e) { alert('Erro ao desativar.'); }
+}
+
+async function handleAdminAtivar(id) {
+  try {
+    var sb = getSupabase();
+    if (!sb) return;
+    var { error } = await sb.from('admin_usuarios').update({ ativo: true }).eq('id', id);
+    if (error) { alert('Erro: ' + error.message); return; }
+    await carregarListaAdmins();
+  } catch (e) { alert('Erro ao ativar.'); }
 }
