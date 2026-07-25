@@ -57,10 +57,11 @@ function showScreen(id) {
 async function carregarDadosCliente() {
   try {
     var sb = getSupabase();
-    if (!sb) return;
+    if (!sb) { alert('[DEBUG] getSupabase() retornou null'); return; }
     var user = (await sb.auth.getUser()).data.user;
-    if (!user) return;
+    if (!user) { alert('[DEBUG] getUser() retornou null'); return; }
     AppState.user = user;
+    alert('[DEBUG] Email auth: ' + user.email);
 
     console.log('[DEBUG] Buscando admin para email:', user.email);
     var admin = (await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle()).data;
@@ -79,7 +80,12 @@ async function carregarDadosCliente() {
     AppState.adminUser = null;
 
     console.log('[DEBUG] Auth user email:', user.email);
-    var cliente = (await sb.from('clientes').select().eq('email', user.email).maybeSingle()).data;
+    var clienteResult = await sb.from('clientes').select().eq('email', user.email).maybeSingle();
+    if (clienteResult.error) {
+      alert('[DEBUG] ERRO na query clientes: ' + clienteResult.error.message + '\nCódigo: ' + clienteResult.error.code);
+      return;
+    }
+    var cliente = clienteResult.data;
     console.log('[DEBUG] Cliente encontrado:', cliente);
     alert('[DEBUG] Email auth: ' + user.email + '\nCliente: ' + (cliente ? cliente.nome + ' (id: ' + cliente.id + ')' : 'NÃO ENCONTRADO'));
     AppState.cliente = cliente;
