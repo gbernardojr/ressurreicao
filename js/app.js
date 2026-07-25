@@ -55,21 +55,21 @@ function showScreen(id) {
 }
 
 async function carregarDadosCliente() {
+  var _dbg = [];
   try {
     var sb = getSupabase();
     if (!sb) { alert('[DEBUG] getSupabase() retornou null'); return; }
     var user = (await sb.auth.getUser()).data.user;
     if (!user) { alert('[DEBUG] getUser() retornou null'); return; }
     AppState.user = user;
-    alert('[DEBUG] Email auth: ' + user.email);
+    _dbg.push('1.Email: ' + user.email);
 
-    console.log('[DEBUG] Buscando admin para email:', user.email);
     var admin = null;
     try {
       var adminResult = await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle();
       admin = adminResult.data;
-      console.log('[DEBUG] Admin encontrado:', admin);
-    } catch (e) { console.error('[DEBUG] Erro query admin:', e); }
+      _dbg.push('2.Admin: ' + JSON.stringify(admin));
+    } catch (e) { _dbg.push('2.Admin ERRO: ' + e.message); }
     if (admin) {
       AppState.isAdmin = true;
       AppState.adminUser = admin;
@@ -77,21 +77,22 @@ async function carregarDadosCliente() {
       AppState.mensalidades = [];
       var config = (await sb.from('config_banco').select().eq('ativo', true).limit(1).maybeSingle()).data;
       AppState.configBanco = config;
+      alert(_dbg.join('\n'));
       return;
     }
 
     AppState.isAdmin = false;
     AppState.adminUser = null;
 
-    console.log('[DEBUG] Auth user email:', user.email);
     var clienteResult = await sb.from('clientes').select().eq('email', user.email).maybeSingle();
     if (clienteResult.error) {
-      alert('[DEBUG] ERRO na query clientes: ' + clienteResult.error.message + '\nCódigo: ' + clienteResult.error.code);
+      _dbg.push('3.Clientes ERRO: ' + clienteResult.error.message + ' (' + clienteResult.error.code + ')');
+      alert(_dbg.join('\n'));
       return;
     }
     var cliente = clienteResult.data;
-    console.log('[DEBUG] Cliente encontrado:', cliente);
-    alert('[DEBUG] Email auth: ' + user.email + '\nCliente: ' + (cliente ? cliente.nome + ' (id: ' + cliente.id + ')' : 'NÃO ENCONTRADO'));
+    _dbg.push('3.Cliente: ' + (cliente ? cliente.nome + ' id=' + cliente.id : 'NÃO ENCONTRADO'));
+    alert(_dbg.join('\n'));
     AppState.cliente = cliente;
 
     if (cliente) {
