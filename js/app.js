@@ -64,7 +64,19 @@ async function carregarDadosCliente() {
 
     var admin = null;
     try {
-      var adminResult = await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle();
+      var cpfCnpj = null;
+      try {
+        var authCliente = await sb.from('clientes').select('cpf_cnpj').eq('email', user.email).maybeSingle();
+        cpfCnpj = authCliente.data ? authCliente.data.cpf_cnpj : null;
+      } catch (e) {}
+
+      var adminQuery = sb.from('admin_usuarios').select().eq('ativo', true);
+      if (cpfCnpj) {
+        adminQuery = adminQuery.or('email.eq.' + user.email + ',cpf.eq.' + cpfCnpj);
+      } else {
+        adminQuery = adminQuery.eq('email', user.email);
+      }
+      var adminResult = await adminQuery.maybeSingle();
       admin = adminResult.data;
     } catch (e) { console.error('Erro query admin:', e); }
     if (admin) {

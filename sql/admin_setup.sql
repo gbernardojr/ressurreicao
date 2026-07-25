@@ -9,9 +9,16 @@ CREATE TABLE IF NOT EXISTS admin_usuarios (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     nome VARCHAR(80) NOT NULL,
     email VARCHAR(80) UNIQUE NOT NULL,
+    cpf VARCHAR(14),
     ativo BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Adicionar coluna cpf se tabela já existir
+DO $$ BEGIN
+  ALTER TABLE admin_usuarios ADD COLUMN IF NOT EXISTS cpf VARCHAR(14);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
 
 -- 2. Permitir admin ver seus próprios dados (para login)
 CREATE POLICY "admin_select_self" ON admin_usuarios
@@ -25,7 +32,8 @@ CREATE POLICY "admin_select_all_clientes" ON clientes
   FOR SELECT TO authenticated
   USING (
     email = auth.email() OR
-    auth.email() IN (SELECT email FROM admin_usuarios WHERE ativo = true)
+    auth.email() IN (SELECT email FROM admin_usuarios WHERE ativo = true) OR
+    EXISTS (SELECT 1 FROM admin_usuarios a JOIN clientes c ON c.cpf_cnpj = a.cpf WHERE a.email = auth.email() AND a.ativo = true)
   );
 
 -- 4. Permitir admin visualizar todas as mensalidades
@@ -34,7 +42,8 @@ CREATE POLICY "admin_select_all_mensalidades" ON mensalidades
   FOR SELECT TO authenticated
   USING (
     cliente_id IN (SELECT id FROM clientes WHERE email = auth.email()) OR
-    auth.email() IN (SELECT email FROM admin_usuarios WHERE ativo = true)
+    auth.email() IN (SELECT email FROM admin_usuarios WHERE ativo = true) OR
+    EXISTS (SELECT 1 FROM admin_usuarios a JOIN clientes c ON c.cpf_cnpj = a.cpf WHERE a.email = auth.email() AND a.ativo = true)
   );
 
 -- 5. Permitir admin visualizar falecidos de qualquer cliente
@@ -43,7 +52,8 @@ CREATE POLICY "admin_select_all_falecidos" ON falecidos
   FOR SELECT TO authenticated
   USING (
     cliente_id IN (SELECT id FROM clientes WHERE email = auth.email()) OR
-    auth.email() IN (SELECT email FROM admin_usuarios WHERE ativo = true)
+    auth.email() IN (SELECT email FROM admin_usuarios WHERE ativo = true) OR
+    EXISTS (SELECT 1 FROM admin_usuarios a JOIN clientes c ON c.cpf_cnpj = a.cpf WHERE a.email = auth.email() AND a.ativo = true)
   );
 
 -- 6. Permitir admin visualizar locais de falecidos
@@ -56,7 +66,8 @@ CREATE POLICY "admin_select_all_falecido_locais" ON falecido_locais
       JOIN clientes c ON c.id = f.cliente_id
       WHERE c.email = auth.email()
     ) OR
-    auth.email() IN (SELECT email FROM admin_usuarios WHERE ativo = true)
+    auth.email() IN (SELECT email FROM admin_usuarios WHERE ativo = true) OR
+    EXISTS (SELECT 1 FROM admin_usuarios a JOIN clientes c ON c.cpf_cnpj = a.cpf WHERE a.email = auth.email() AND a.ativo = true)
   );
 
 -- ============================================================
@@ -64,6 +75,6 @@ CREATE POLICY "admin_select_all_falecido_locais" ON falecido_locais
 -- 1. Crie um usuário no Authentication do Supabase (email/senha)
 -- 2. Insira o registro na tabela admin_usuarios:
 --
--- INSERT INTO admin_usuarios (nome, email)
--- VALUES ('Nome do Admin', 'email-do-admin@exemplo.com');
+-- INSERT INTO admin_usuarios (nome, email, cpf)
+-- VALUES ('Nome do Admin', 'email-do-admin@exemplo.com', '00000000000');
 -- ============================================================
