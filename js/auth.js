@@ -162,11 +162,14 @@ async function handleLogin(e) {
 
     var auth = await sb.auth.signInWithPassword({ email: cliente.email, password: senha });
     if (auth.error) {
-      var msg = 'Email ou senha incorretos.';
-      if (auth.error.message && auth.error.message.includes('Invalid login')) {
-        msg += ' Se ainda não tem conta, clique em "Primeiro acesso".';
+      var msg = auth.error.message || '';
+      var display = 'Email ou senha incorretos.';
+      if (msg.includes('Email not confirmed') || msg.includes('not confirmed')) {
+        display = 'E-mail ainda não confirmado. Verifique sua caixa de entrada.';
+      } else if (msg.includes('Invalid login')) {
+        display = 'Email ou senha incorretos. Se ainda não tem conta, clique em "Primeiro acesso".';
       }
-      errEl.innerHTML = msg + ' <a href="#/cadastro" style="color:#1565C0;text-decoration:underline">Criar conta</a>';
+      errEl.innerHTML = display + ' <a href="#/cadastro" style="color:#1565C0;text-decoration:underline">Criar conta</a>';
       errEl.classList.remove('hidden');
       btn.disabled = false;
       btn.textContent = 'ENTRAR';
@@ -301,7 +304,18 @@ async function handleEsqueciSenha(e) {
       redirectTo: window.location.origin + '/#/redefinir-senha',
     });
 
-    if (auth.error) { errEl.textContent = 'Erro ao enviar e-mail. Tente novamente.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
+    if (auth.error) {
+      var errMsg = auth.error.message || '';
+      var display = 'Erro ao enviar e-mail. Tente novamente.';
+      if (errMsg.includes('Email not confirmed') || errMsg.includes('not confirmed')) {
+        display = 'E-mail ainda não foi confirmado. Verifique sua caixa de entrada.';
+      }
+      errEl.textContent = display;
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'ENVIAR LINK';
+      return;
+    }
 
     okEl.textContent = 'Link de redefinição enviado para ' + cliente.email;
     okEl.classList.remove('hidden');
@@ -441,7 +455,14 @@ async function handleCadastro(e) {
       await sb.from('clientes').update({ email: emailFinal }).eq('id', cliente.id);
     }
 
-    okEl.textContent = 'Conta criada com sucesso! Agora você pode fazer login.';
+    var signInResult = await sb.auth.signInWithPassword({ email: emailFinal, password: senha });
+    if (!signInResult.error) {
+      await carregarDadosCliente();
+      navigate('#/dashboard');
+      return;
+    }
+
+    okEl.innerHTML = 'Conta criada! Verifique seu <b>e-mail</b> para confirmar o acesso. <br>Se não encontrou, verifique a caixa de spam.';
     okEl.classList.remove('hidden');
     btn.disabled = false;
     btn.textContent = 'CADASTRAR';
