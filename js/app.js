@@ -55,21 +55,18 @@ function showScreen(id) {
 }
 
 async function carregarDadosCliente() {
-  var _dbg = [];
   try {
     var sb = getSupabase();
-    if (!sb) { document.getElementById('app').innerHTML = '<pre>DEBUG: getSupabase() retornou null</pre>'; return; }
+    if (!sb) return;
     var user = (await sb.auth.getUser()).data.user;
-    if (!user) { document.getElementById('app').innerHTML = '<pre>DEBUG: getUser() retornou null</pre>'; return; }
+    if (!user) return;
     AppState.user = user;
-    _dbg.push('1.Email: ' + user.email);
 
     var admin = null;
     try {
       var adminResult = await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle();
       admin = adminResult.data;
-      _dbg.push('2.Admin: ' + JSON.stringify(admin));
-    } catch (e) { _dbg.push('2.Admin ERRO: ' + e.message); }
+    } catch (e) { console.error('Erro query admin:', e); }
     if (admin) {
       AppState.isAdmin = true;
       AppState.adminUser = admin;
@@ -77,7 +74,6 @@ async function carregarDadosCliente() {
       AppState.mensalidades = [];
       var config = (await sb.from('config_banco').select().eq('ativo', true).limit(1).maybeSingle()).data;
       AppState.configBanco = config;
-      document.getElementById('app').innerHTML = '<pre>DEBUG ADMIN:\n' + _dbg.join('\n') + '</pre>';
       return;
     }
 
@@ -85,14 +81,7 @@ async function carregarDadosCliente() {
     AppState.adminUser = null;
 
     var clienteResult = await sb.from('clientes').select().eq('email', user.email).maybeSingle();
-    if (clienteResult.error) {
-      _dbg.push('3.Clientes ERRO: ' + clienteResult.error.message + ' (' + clienteResult.error.code + ')');
-      document.getElementById('app').innerHTML = '<pre>DEBUG ERRO:\n' + _dbg.join('\n') + '</pre>';
-      return;
-    }
     var cliente = clienteResult.data;
-    _dbg.push('3.Cliente: ' + (cliente ? cliente.nome + ' id=' + cliente.id : 'NÃO ENCONTRADO'));
-    document.getElementById('app').innerHTML = '<pre>DEBUG:\n' + _dbg.join('\n') + '</pre>';
     AppState.cliente = cliente;
 
     if (cliente) {
@@ -124,7 +113,7 @@ async function carregarDadosCliente() {
       var config = (await sb.from('config_banco').select().eq('ativo', true).limit(1).maybeSingle()).data;
       AppState.configBanco = config;
     }
-  } catch (e) { console.error('Erro carregar dados:', e); document.getElementById('app').innerHTML = '<pre>DEBUG CATCH:\n' + e.message + '\n' + e.stack + '</pre>'; }
+  } catch (e) { console.error('Erro carregar dados:', e); }
 }
 
 async function carregarFalecidos() {
@@ -172,10 +161,6 @@ async function handleRoute() {
 
     if (session && !AppState.cliente && !AppState.isAdmin) {
       await carregarDadosCliente();
-    }
-
-    if (hash === '#/dashboard' && !AppState.cliente && !AppState.isAdmin) {
-      return;
     }
 
     var parts = hash.replace('#', '').split('?');
