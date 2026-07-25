@@ -10,6 +10,7 @@
 !/script.sql
 !/sql
 !/admin-criar-contas.html
+!/admin-executar-sql.html
 !.gitignore
 
 .vercel

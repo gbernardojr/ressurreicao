@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Executar SQL - Admin Setup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 20px; }
+    .container { max-width: 700px; margin: 0 auto; }
+    h1 { font-size: 22px; margin-bottom: 8px; color: #1a237e; }
+    p.desc { color: #666; margin-bottom: 20px; font-size: 14px; line-height: 1.6; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; }
+    .btn-primary { background: #4A90D9; color: #fff; }
+    .btn-primary:hover { background: #357ABD; }
+    .btn-success { background: #388E3C; color: #fff; }
+    .steps { font-size: 14px; line-height: 1.8; }
+    .steps li { margin-bottom: 8px; }
+    .steps code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .status { padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px; display: none; }
+    .status-ok { background: #E8F5E9; color: #2E7D32; }
+    .status-info { background: #E3F2FD; color: #1565C0; }
+    .sql-box { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 12px; line-height: 1.5; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Configurar Tabela de Admins</h1>
+    <p class="desc">Esta página configura a tabela <code>admin_usuarios</code> com as permissões necessárias para o gerenciamento de administradores pelo app.</p>
+
+    <div class="card">
+      <h3 style="margin-bottom:12px">Instruções</h3>
+      <ol class="steps">
+        <li>Clique no botão <b>"Copiar SQL"</b> abaixo</li>
+        <li>No painel do Supabase, vá em <b>SQL Editor</b></li>
+        <li>Cole o SQL na área de edição</li>
+        <li>Clique em <b>"Run"</b> (botão verde)</li>
+        <li>Repita para o <b>Script 2</b> (se necessário)</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:4px">Script 1 - Criar tabela e políticas</h3>
+      <p style="font-size:12px;color:#757575;margin-bottom:8px">Execute este script se a tabela admin_usuarios ainda NÃO existe ou precisa ser recriada.</p>
+      <button class="btn btn-primary" onclick="copiarSql1()">Copiar Script 1</button>
+      <div id="status1" class="status"></div>
+      <details style="margin-top:8px">
+        <summary style="font-size:13px;color:#1565C0;cursor:pointer">Ver SQL</summary>
+        <div class="sql-box" id="sql1view"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:4px">Script 2 - Adicionar coluna CPF + políticas (tabela já existe)</h3>
+      <p style="font-size:12px;color:#757575;margin-bottom:8px">Execute este script se a tabela admin_usuarios já existe e só precisa da coluna CPF e novas políticas.</p>
+      <button class="btn btn-success" onclick="copiarSql2()">Copiar Script 2</button>
+      <div id="status2" class="status"></div>
+      <details style="margin-top:8px">
+        <summary style="font-size:13px;color:#1565C0;cursor:pointer">Ver SQL</summary>
+        <div class="sql-box" id="sql2view"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:8px">Após executar o SQL</h3>
+      <p style="font-size:13px;color:#666;line-height:1.6">
+        1. Vá em <b>Table Editor</b> → <b>admin_usuarios</b><br>
+        2. Adicione o registro do admin com nome, email e CPF<br>
+        3. No app, acesse o painel admin e teste "Gerenciar Administradores"
+      </p>
+    </div>
+  </div>
+
+  <script>
+    var SQL1 = `-- ============================================================
+-- Script 1: Criar tabela admin_usuarios completa
+-- Execute este script se a tabela NÃO existe
+-- ============================================================
+
+-- Criar tabela
+CREATE TABLE IF NOT EXISTS admin_usuarios (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    nome VARCHAR(80) NOT NULL,
+    email VARCHAR(80) UNIQUE NOT NULL,
+    cpf VARCHAR(14),
+    ativo BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Permitir admin ver seus próprios dados (para login)
+DROP POLICY IF EXISTS "admin_select_self" ON admin_usuarios;
+CREATE POLICY "admin_select_self" ON admin_usuarios
+  FOR SELECT TO authenticated
+  USING (email = auth.email());
+
+-- Permitir admin listar todos os admins
+DROP POLICY IF EXISTS "admin_select_all_admins" ON admin_usuarios;
+CREATE POLICY "admin_select_all_admins" ON admin_usuarios
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  );
+
+-- Permitir admin cadastrar novos admins
+DROP POLICY IF EXISTS "admin_insert_admins" ON admin_usuarios;
+CREATE POLICY "admin_insert_admins" ON admin_usuarios
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  );
+
+-- Permitir admin ativar/desativar outros admins
+DROP POLICY IF EXISTS "admin_update_admins" ON admin_usuarios;
+CREATE POLICY "admin_update_admins" ON admin_usuarios
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  );
+
+-- Inserir seu primeiro admin (substitua os dados)
+-- INSERT INTO admin_usuarios (nome, email, cpf)
+-- VALUES ('Seu Nome', 'seu@email.com', '00000000000');`;
+
+    var SQL2 = `-- ============================================================
+-- Script 2: Adicionar coluna CPF e políticas a tabela existente
+-- Execute este script se a tabela admin_usuarios já existe
+-- ============================================================
+
+-- Adicionar coluna cpf
+DO $$ BEGIN
+  ALTER TABLE admin_usuarios ADD COLUMN IF NOT EXISTS cpf VARCHAR(14);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Permitir admin listar todos os admins
+DROP POLICY IF EXISTS "admin_select_all_admins" ON admin_usuarios;
+CREATE POLICY "admin_select_all_admins" ON admin_usuarios
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  );
+
+-- Permitir admin cadastrar novos admins
+DROP POLICY IF EXISTS "admin_insert_admins" ON admin_usuarios;
+CREATE POLICY "admin_insert_admins" ON admin_usuarios
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  );
+
+-- Permitir admin ativar/desativar outros admins
+DROP POLICY IF EXISTS "admin_update_admins" ON admin_usuarios;
+CREATE POLICY "admin_update_admins" ON admin_usuarios
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  )
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM admin_usuarios a WHERE a.email = auth.email() AND a.ativo = true)
+  );`;
+
+    document.getElementById('sql1view').textContent = SQL1;
+    document.getElementById('sql2view').textContent = SQL2;
+
+    function copiar(texto, statusId) {
+      var ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.left = '0';
+      ta.style.width = '1px';
+      ta.style.height = '1px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta);
+      var el = document.getElementById(statusId);
+      el.style.display = 'block';
+      if (ok) {
+        el.className = 'status status-ok';
+        el.textContent = 'SQL copiado! Agora cole no SQL Editor do Supabase e clique em Run.';
+      } else {
+        el.className = 'status status-info';
+        el.textContent = 'Selecione o SQL manualmente acima e copie (Ctrl+C).';
+      }
+    }
+
+    function copiarSql1() { copiar(SQL1, 'status1'); }
+    function copiarSql2() { copiar(SQL2, 'status2'); }
+  </script>
+</body>
+</html>
