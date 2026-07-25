@@ -58,9 +58,9 @@ async function carregarDadosCliente() {
   var _dbg = [];
   try {
     var sb = getSupabase();
-    if (!sb) { alert('[DEBUG] getSupabase() retornou null'); return; }
+    if (!sb) { document.getElementById('app').innerHTML = '<pre>DEBUG: getSupabase() retornou null</pre>'; return; }
     var user = (await sb.auth.getUser()).data.user;
-    if (!user) { alert('[DEBUG] getUser() retornou null'); return; }
+    if (!user) { document.getElementById('app').innerHTML = '<pre>DEBUG: getUser() retornou null</pre>'; return; }
     AppState.user = user;
     _dbg.push('1.Email: ' + user.email);
 
@@ -77,7 +77,7 @@ async function carregarDadosCliente() {
       AppState.mensalidades = [];
       var config = (await sb.from('config_banco').select().eq('ativo', true).limit(1).maybeSingle()).data;
       AppState.configBanco = config;
-      alert(_dbg.join('\n'));
+      document.getElementById('app').innerHTML = '<pre>DEBUG ADMIN:\n' + _dbg.join('\n') + '</pre>';
       return;
     }
 
@@ -87,12 +87,12 @@ async function carregarDadosCliente() {
     var clienteResult = await sb.from('clientes').select().eq('email', user.email).maybeSingle();
     if (clienteResult.error) {
       _dbg.push('3.Clientes ERRO: ' + clienteResult.error.message + ' (' + clienteResult.error.code + ')');
-      alert(_dbg.join('\n'));
+      document.getElementById('app').innerHTML = '<pre>DEBUG ERRO:\n' + _dbg.join('\n') + '</pre>';
       return;
     }
     var cliente = clienteResult.data;
     _dbg.push('3.Cliente: ' + (cliente ? cliente.nome + ' id=' + cliente.id : 'NÃO ENCONTRADO'));
-    alert(_dbg.join('\n'));
+    document.getElementById('app').innerHTML = '<pre>DEBUG:\n' + _dbg.join('\n') + '</pre>';
     AppState.cliente = cliente;
 
     if (cliente) {
@@ -124,7 +124,7 @@ async function carregarDadosCliente() {
       var config = (await sb.from('config_banco').select().eq('ativo', true).limit(1).maybeSingle()).data;
       AppState.configBanco = config;
     }
-  } catch (e) { console.error('Erro carregar dados:', e); alert('[DEBUG] ERRO carregarDadosCliente: ' + e.message); }
+  } catch (e) { console.error('Erro carregar dados:', e); document.getElementById('app').innerHTML = '<pre>DEBUG CATCH:\n' + e.message + '\n' + e.stack + '</pre>'; }
 }
 
 async function carregarFalecidos() {
@@ -172,6 +172,10 @@ async function handleRoute() {
 
     if (session && !AppState.cliente && !AppState.isAdmin) {
       await carregarDadosCliente();
+    }
+
+    if (hash === '#/dashboard' && !AppState.cliente && !AppState.isAdmin) {
+      return;
     }
 
     var parts = hash.replace('#', '').split('?');
