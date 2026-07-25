@@ -62,7 +62,9 @@ async function carregarDadosCliente() {
     if (!user) return;
     AppState.user = user;
 
+    console.log('[DEBUG] Buscando admin para email:', user.email);
     var admin = (await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle()).data;
+    console.log('[DEBUG] Admin encontrado:', admin);
     if (admin) {
       AppState.isAdmin = true;
       AppState.adminUser = admin;
@@ -76,7 +78,10 @@ async function carregarDadosCliente() {
     AppState.isAdmin = false;
     AppState.adminUser = null;
 
+    console.log('[DEBUG] Auth user email:', user.email);
     var cliente = (await sb.from('clientes').select().eq('email', user.email).maybeSingle()).data;
+    console.log('[DEBUG] Cliente encontrado:', cliente);
+    alert('[DEBUG] Email auth: ' + user.email + '\nCliente: ' + (cliente ? cliente.nome + ' (id: ' + cliente.id + ')' : 'NÃO ENCONTRADO'));
     AppState.cliente = cliente;
 
     if (cliente) {
