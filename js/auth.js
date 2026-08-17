@@ -94,6 +94,7 @@ function renderLogin() {
         '</form>' +
         '<button class="link" onclick="navigate(\'#/esqueci-senha\')" style="margin-top:4px">Esqueci minha senha</button>' +
         '<button class="link" onclick="navigate(\'#/cadastro\')">Primeiro acesso? Cadastre sua senha</button>' +
+        '<button class="link" onclick="navigate(\'#/admin-login\')" style="margin-top:8px;font-weight:600">🔒 Área Restrita</button>' +
         '<div id="installArea" class="install-area' + (estaInstalado() && !deferredPrompt ? ' hidden' : '') + '">' +
           '<button class="link" id="installLink" onclick="handleInstallClick()">Instalar o sistema no dispositivo local</button>' +
         '</div>' +
@@ -117,8 +118,8 @@ function renderAdminLogin() {
       '<div class="login-card">' +
         '<form id="adminLoginForm">' +
           '<div class="form-group"><div class="input-icon">' +
-            '<span class="icon">&#9993;</span>' +
-            '<input type="email" id="adminEmailInput" class="form-input" placeholder="Email do administrador" autocomplete="email">' +
+            '<span class="icon">&#128100;</span>' +
+            '<input type="text" id="adminCpfInput" class="form-input" placeholder="CPF do Administrador" maxlength="14" inputmode="numeric" autocomplete="username">' +
           '</div></div>' +
           '<div class="form-group"><div class="input-icon">' +
             '<span class="icon">&#128274;</span>' +
@@ -127,9 +128,13 @@ function renderAdminLogin() {
           '<div id="loginError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
           '<button type="submit" id="loginBtn" class="btn btn-primary">ENTRAR COMO ADMIN</button>' +
         '</form>' +
+        '<button class="link" onclick="navigate(\'#/login\')" style="margin-top:12px">Voltar ao login comum</button>' +
       '</div>' +
     '</div>';
 
+  document.getElementById('adminCpfInput').addEventListener('input', function() {
+    this.value = formatarCpf(this.value);
+  });
   document.getElementById('adminLoginForm').addEventListener('submit', handleAdminLogin);
 }
 
@@ -192,14 +197,14 @@ async function handleLogin(e) {
 
 async function handleAdminLogin(e) {
   e.preventDefault();
-  var email = document.getElementById('adminEmailInput').value.trim().toLowerCase();
+  var cpf = document.getElementById('adminCpfInput').value.replace(/\D/g, '');
   var senha = document.getElementById('adminSenhaInput').value;
   var errEl = document.getElementById('loginError');
   var btn = document.getElementById('loginBtn');
 
   errEl.classList.add('hidden');
-  if (!email || !senha) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
-  if (!email.includes('@')) { errEl.textContent = 'Email inválido'; errEl.classList.remove('hidden'); return; }
+  if (!cpf || !senha) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
+  if (cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
 
   btn.disabled = true;
   btn.textContent = 'Entrando...';
@@ -208,8 +213,34 @@ async function handleAdminLogin(e) {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão. Tente novamente.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR COMO ADMIN'; return; }
 
-    var auth = await sb.auth.signInWithPassword({ email: email, password: senha });
-    if (auth.error) { errEl.textContent = 'Email ou senha incorretos'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR COMO ADMIN'; return; }
+    // Buscar e-mail do administrador por CPF em admin_usuarios ou clientes
+    var adminEmail = null;
+    var { data: adminReg } = await sb.from('admin_usuarios').select('email, ativo').eq('cpf', cpf).eq('ativo', true).maybeSingle();
+    if (adminReg && adminReg.email) {
+      adminEmail = adminReg.email;
+    } else {
+      var { data: clienteReg } = await sb.from('clientes').select('email').eq('cpf_cnpj', cpf).maybeSingle();
+      if (clienteReg && clienteReg.email) {
+        adminEmail = clienteReg.email;
+      }
+    }
+
+    if (!adminEmail) {
+      errEl.textContent = 'CPF de administrador não encontrado ou inativo.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'ENTRAR COMO ADMIN';
+      return;
+    }
+
+    var auth = await sb.auth.signInWithPassword({ email: adminEmail, password: senha });
+    if (auth.error) {
+      errEl.textContent = 'CPF ou senha incorretos.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'ENTRAR COMO ADMIN';
+      return;
+    }
 
     await carregarDadosCliente();
 
