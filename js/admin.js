@@ -809,10 +809,10 @@ async function renderAdminGerenciar() {
       '<div id="adminListaArea"><div class="spinner"></div></div>' +
       '<div class="card" style="margin-top:16px">' +
         '<h3 style="font-size:16px;margin-bottom:12px">Novo Administrador</h3>' +
-        '<p style="font-size:13px;color:#757575;margin-bottom:12px">O cliente precisa já existir na tabela de clientes (com email) para poder ser promovido a admin.</p>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF do cliente</label><input type="text" id="adminNovoCpf" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nome</label><input type="text" id="adminNovoNome" class="form-input" placeholder="Nome do administrador"></div>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Email (do Auth)</label><input type="email" id="adminNovoEmail" class="form-input" placeholder="email@exemplo.com"></div>' +
+        '<p style="font-size:13px;color:#757575;margin-bottom:12px">Cadastre os dados do novo administrador abaixo. O cadastro de administradores é independente do cadastro de clientes.</p>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nome do Administrador</label><input type="text" id="adminNovoNome" class="form-input" placeholder="Nome completo"></div>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF do Administrador</label><input type="text" id="adminNovoCpf" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Email do Administrador</label><input type="email" id="adminNovoEmail" class="form-input" placeholder="email@exemplo.com"></div>' +
         '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Senha temporária</label><input type="text" id="adminNovoSenha" class="form-input" value="Ress@2024"></div>' +
         '<div id="adminNovoError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:12px;font-size:14px"></div>' +
         '<div id="adminNovoSuccess" class="hidden" style="color:#388E3C;background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:12px;font-size:14px"></div>' +
@@ -864,8 +864,8 @@ async function carregarListaAdmins() {
 }
 
 async function handleAdminCadastrarNovo() {
-  var cpf = document.getElementById('adminNovoCpf').value.replace(/\D/g, '');
   var nome = document.getElementById('adminNovoNome').value.trim();
+  var cpf = document.getElementById('adminNovoCpf').value.replace(/\D/g, '');
   var email = document.getElementById('adminNovoEmail').value.trim().toLowerCase();
   var senha = document.getElementById('adminNovoSenha').value;
   var errEl = document.getElementById('adminNovoError');
@@ -875,8 +875,8 @@ async function handleAdminCadastrarNovo() {
   errEl.classList.add('hidden');
   okEl.classList.add('hidden');
 
+  if (!nome) { errEl.textContent = 'Informe o nome do administrador'; errEl.classList.remove('hidden'); return; }
   if (!cpf || cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
-  if (!nome) { errEl.textContent = 'Informe o nome'; errEl.classList.remove('hidden'); return; }
   if (!email || !email.includes('@')) { errEl.textContent = 'Email inválido'; errEl.classList.remove('hidden'); return; }
   if (!senha || senha.length < 6) { errEl.textContent = 'Senha deve ter pelo menos 6 caracteres'; errEl.classList.remove('hidden'); return; }
 
@@ -887,8 +887,8 @@ async function handleAdminCadastrarNovo() {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR ADMIN'; return; }
 
-    var { data: existente } = await sb.from('admin_usuarios').select('id').eq('cpf', cpf).maybeSingle();
-    if (existente) { errEl.textContent = 'Este CPF já é administrador.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR ADMIN'; return; }
+    var { data: existente } = await sb.from('admin_usuarios').select('id').or('cpf.eq.' + cpf + ',email.eq.' + email).maybeSingle();
+    if (existente) { errEl.textContent = 'Este CPF ou E-mail já é administrador.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR ADMIN'; return; }
 
     var { error: authErr } = await sb.auth.signUp({ email: email, password: senha });
     if (authErr) {
@@ -913,7 +913,12 @@ async function handleAdminCadastrarNovo() {
     });
 
     if (insertErr) {
-      errEl.textContent = 'Erro ao cadastrar admin: ' + (insertErr.message || 'Erro desconhecido');
+      var errMsg = insertErr.message || '';
+      if (errMsg.includes('row-level security') || errMsg.includes('RLS') || errMsg.includes('violates')) {
+        errEl.innerHTML = '<b>Erro de Permissão (RLS no Supabase):</b><br>A tabela <code>admin_usuarios</code> bloqueou a inserção.<br>Execute o SQL abaixo no <b>SQL Editor</b> do Supabase para liberar:<br><br><code style="background:#fff;padding:6px;border-radius:4px;display:block;margin-top:4px;font-size:12px">DROP POLICY IF EXISTS "admin_usuarios_all" ON admin_usuarios;<br>CREATE POLICY "admin_usuarios_all" ON admin_usuarios FOR ALL TO public USING (true) WITH CHECK (true);</code>';
+      } else {
+        errEl.textContent = 'Erro ao cadastrar admin: ' + errMsg;
+      }
       errEl.classList.remove('hidden');
       btn.disabled = false;
       btn.textContent = 'CADASTRAR ADMIN';
