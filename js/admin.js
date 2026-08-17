@@ -7,12 +7,8 @@ var AdminState = {
 
 function formatarCpfCnpj(v) {
   var d = v.replace(/\D/g, '');
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return d.slice(0,3) + '.' + d.slice(3);
-  if (d.length <= 9) return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6);
+  if (d.length <= 6) return d;
   if (d.length <= 11) return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9,11);
-  if (d.length <= 12) return d.slice(0,2) + '.' + d.slice(2,5) + '.' + d.slice(5,8) + '/' + d.slice(8,12);
-  if (d.length <= 14) return d.slice(0,2) + '.' + d.slice(2,5) + '.' + d.slice(5,8) + '/' + d.slice(8,12) + '-' + d.slice(12,14);
   return d.slice(0,2) + '.' + d.slice(2,5) + '.' + d.slice(5,8) + '/' + d.slice(8,12) + '-' + d.slice(12,14);
 }
 
@@ -32,10 +28,10 @@ function renderAdminDashboard() {
     '</div></div>' +
     '<div class="main-content">' +
       '<div class="card">' +
-        '<h2 style="font-size:18px;margin-bottom:16px;color:var(--primary-dark)">🔍 Consulta de Clientes</h2>' +
-        '<p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Digite o CPF ou CNPJ do cliente para acessar os boletos.</p>' +
+        '<h2 style="font-size:18px;margin-bottom:16px;color:var(--primary-dark)">🔍 Consulta de Clientes / Jazigos</h2>' +
+        '<p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Digite o CPF, CNPJ ou Número do Jazigo (Código) do cliente para acessar os boletos.</p>' +
         '<div class="admin-search-box">' +
-          '<input type="text" id="adminSearchInput" class="form-input" placeholder="000.000.000-00 ou 00.000.000/0000-00" maxlength="18" inputmode="numeric">' +
+          '<input type="text" id="adminSearchInput" class="form-input" placeholder="CPF, CNPJ ou Jazigo (ex: 0252)" maxlength="18">' +
           '<button id="adminSearchBtn" class="btn btn-primary" style="margin-top:12px" onclick="handleAdminSearch()">BUSCAR</button>' +
         '</div>' +
         '<div id="adminSearchError" class="alert alert-error hidden" style="margin-top:12px"></div>' +
@@ -65,11 +61,12 @@ async function handleAdminSearch() {
   AdminState.selectedMensalidades = [];
   document.getElementById('adminMensalidadesArea').innerHTML = '';
 
-  var documento = input.value.replace(/\D/g, '');
+  var rawVal = input.value.trim();
+  var digits = rawVal.replace(/\D/g, '');
   errEl.classList.add('hidden');
 
-  if (!documento || (documento.length !== 11 && documento.length !== 14)) {
-    errEl.textContent = 'Digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido';
+  if (!rawVal) {
+    errEl.textContent = 'Digite o CPF, CNPJ ou Número do Jazigo/Código';
     errEl.classList.remove('hidden');
     return;
   }
@@ -82,16 +79,68 @@ async function handleAdminSearch() {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'BUSCAR'; return; }
 
-    var busca = await sb.from('clientes').select('id, codigo_propri, cpf_cnpj, nome, telefone, email, endereco, bairro, cidade, estado')
-      .eq('cpf_cnpj', documento)
+    var conditions = [];
+
+    if (digits.length === 11 || digits.length === 14) {
+      conditions.push('cpf_cnpj.eq.' + digits);
+    }
+
+    conditions.push('codigo_propri.eq.' + rawVal);
+
+    if (digits && digits !== rawVal) {
+      conditions.push('codigo_propri.eq.' + digits);
+    }
+
+    if (digits && digits.length <= 4) {
+      var padded = digits.padStart(4, '0');
+      conditions.push('codigo_propri.eq.' + padded);
+    }
+
+    var busca = await sb.from('clientes')
+      .select('id, codigo_propri, cpf_cnpj, nome, telefone, email, endereco, bairro, cidade, estado')
+      .or(conditions.join(','))
       .limit(20);
 
-    if (busca.error) { errEl.textContent = 'Erro na consulta.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'BUSCAR'; resultsEl.innerHTML = ''; return; }
+    if (busca.error) {
+      errEl.textContent = 'Erro na consulta.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'BUSCAR';
+      resultsEl.innerHTML = '';
+      return;
+    }
 
     AdminState.searchResults = busca.data || [];
 
+    if (AdminState.searchResults.length === 0 && rawVal) {
+      var jazigoConds = ['jazigo.eq.' + rawVal];
+      if (digits) {
+        jazigoConds.push('jazigo.eq.' + digits);
+        if (digits.length <= 4) {
+          jazigoConds.push('jazigo.eq.' + digits.padStart(4, '0'));
+        }
+      }
+
+      var buscaJazigo = await sb.from('mensalidades')
+        .select('cliente_id')
+        .or(jazigoConds.join(','))
+        .limit(20);
+
+      if (buscaJazigo.data && buscaJazigo.data.length > 0) {
+        var clientIds = [...new Set(buscaJazigo.data.map(function(m) { return m.cliente_id; }).filter(Boolean))];
+        if (clientIds.length > 0) {
+          var buscaClientesJazigo = await sb.from('clientes')
+            .select('id, codigo_propri, cpf_cnpj, nome, telefone, email, endereco, bairro, cidade, estado')
+            .in('id', clientIds);
+          if (buscaClientesJazigo.data) {
+            AdminState.searchResults = buscaClientesJazigo.data;
+          }
+        }
+      }
+    }
+
     if (AdminState.searchResults.length === 0) {
-      resultsEl.innerHTML = '<div class="empty-state"><div class="icon">&#128269;</div><p>Nenhum cliente encontrado com esse documento.</p></div>';
+      resultsEl.innerHTML = '<div class="empty-state"><div class="icon">&#128269;</div><p>Nenhum cliente ou jazigo encontrado com essa informação.</p></div>';
       btn.disabled = false;
       btn.textContent = 'BUSCAR';
       return;
@@ -109,7 +158,7 @@ async function handleAdminSearch() {
 }
 
 function renderAdminSearchResults(container) {
-  var html = '<h3 style="font-size:16px;margin:16px 0 8px;color:var(--text)">Clientes encontrados:</h3>';
+  var html = '<h3 style="font-size:16px;margin:16px 0 8px;color:var(--text)">Clientes / Jazigos encontrados:</h3>';
   AdminState.searchResults.forEach(function(c) {
     html +=
       '<div class="card admin-cliente-card" onclick="handleAdminSelectCliente(\'' + c.id + '\')">' +
@@ -118,8 +167,8 @@ function renderAdminSearchResults(container) {
           '<div style="flex:1">' +
             '<div style="font-weight:600;font-size:15px">' + (c.nome || '-') + '</div>' +
             '<div style="font-size:13px;color:var(--text-secondary);margin-top:2px">' +
-              'Cód: ' + (c.codigo_propri || '-') +
-              (c.cpf_cnpj ? ' | ' + formatarCpfCnpj(c.cpf_cnpj) : '') +
+              'Jazigo / Cód: <strong>' + (c.codigo_propri || '-') + '</strong>' +
+              (c.cpf_cnpj ? ' | CPF/CNPJ: ' + formatarCpfCnpj(c.cpf_cnpj) : '') +
             '</div>' +
             (c.cidade ? '<div style="font-size:13px;color:var(--text-secondary)">' + c.cidade + '/' + (c.estado || '') + '</div>' : '') +
           '</div>' +
