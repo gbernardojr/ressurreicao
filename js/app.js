@@ -64,15 +64,22 @@ async function carregarDadosCliente() {
 
     var admin = null;
     try {
-      var cpfCnpj = null;
-      try {
-        var authCliente = await sb.from('clientes').select('cpf_cnpj').eq('email', user.email).maybeSingle();
-        cpfCnpj = authCliente.data ? authCliente.data.cpf_cnpj : null;
-      } catch (e) {}
+      if (user.email) {
+        var adminByEmail = await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle();
+        if (adminByEmail && adminByEmail.data) admin = adminByEmail.data;
+      }
 
-      if (cpfCnpj) {
-        var adminResult = await sb.from('admin_usuarios').select().eq('cpf', cpfCnpj).eq('ativo', true).maybeSingle();
-        admin = adminResult.data;
+      if (!admin) {
+        var cpfCnpj = null;
+        try {
+          var authCliente = await sb.from('clientes').select('cpf_cnpj').eq('email', user.email).maybeSingle();
+          cpfCnpj = authCliente.data ? authCliente.data.cpf_cnpj : null;
+        } catch (e) {}
+
+        if (cpfCnpj) {
+          var adminResult = await sb.from('admin_usuarios').select().eq('cpf', cpfCnpj).eq('ativo', true).maybeSingle();
+          if (adminResult && adminResult.data) admin = adminResult.data;
+        }
       }
     } catch (e) { console.error('Erro query admin:', e); }
     if (admin) {
