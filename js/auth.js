@@ -182,11 +182,7 @@ async function handleLogin(e) {
     }
 
     await carregarDadosCliente();
-    if (AppState.isAdmin) {
-      navigate('#/admin');
-    } else {
-      navigate('#/dashboard');
-    }
+    navigate('#/dashboard');
   } catch (err) {
     errEl.textContent = 'Erro ao conectar. Tente novamente.';
     errEl.classList.remove('hidden');
