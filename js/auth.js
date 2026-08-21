@@ -231,7 +231,12 @@ async function handleAdminLogin(e) {
 
     var auth = await sb.auth.signInWithPassword({ email: adminEmail, password: senha });
     if (auth.error) {
-      errEl.textContent = 'CPF ou senha incorretos.';
+      var msg = auth.error.message || '';
+      var display = 'CPF ou senha incorretos.';
+      if (msg.includes('Email not confirmed') || msg.includes('not confirmed')) {
+        display = 'E-mail do administrador não confirmado. Confirme o e-mail ou execute o SQL de liberação no Supabase.';
+      }
+      errEl.textContent = display;
       errEl.classList.remove('hidden');
       btn.disabled = false;
       btn.textContent = 'ENTRAR COMO ADMIN';
