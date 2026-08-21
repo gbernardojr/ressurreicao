@@ -931,10 +931,11 @@ async function carregarListaAdmins() {
             '<div style="font-size:13px;color:#757575">' + (a.cpf ? formatarCpf(a.cpf) : 'Sem CPF') + '</div>' +
             '<div style="font-size:12px;color:' + statusCor + ';font-weight:600">' + statusTxt + '</div>' +
           '</div>' +
-          '<div>' +
+          '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' +
             (a.ativo
               ? '<button class="btn btn-outline" onclick="handleAdminDesativar(\'' + a.id + '\', \'' + (a.nome || '') + '\')" style="font-size:12px;padding:6px 12px;color:#D32F2F;border-color:#D32F2F">Desativar</button>'
               : '<button class="btn btn-outline" onclick="handleAdminAtivar(\'' + a.id + '\')" style="font-size:12px;padding:6px 12px;color:#388E3C;border-color:#388E3C">Ativar</button>') +
+            '<button class="btn btn-outline" onclick="handleAdminExcluir(\'' + a.id + '\', \'' + (a.nome || '').replace(/\'/g, '') + '\', \'' + (a.email || '') + '\')" style="font-size:12px;padding:6px 12px;color:#B71C1C;border-color:#B71C1C;background:#FFEBEE">🗑️ Excluir</button>' +
           '</div>' +
         '</div>';
     });
@@ -1044,6 +1045,34 @@ async function handleAdminAtivar(id) {
     if (error) { alert('Erro: ' + error.message); return; }
     await carregarListaAdmins();
   } catch (e) { alert('Erro ao ativar.'); }
+}
+
+async function handleAdminExcluir(id, nome, email) {
+  if (!confirm('⚠️ ATENÇÃO: Excluir permanentemente o administrador "' + nome + '"?\n\nEsta ação não pode ser desfeita. O usuário será removido da lista de administradores e do sistema de autenticação.')) return;
+  try {
+    var sb = getSupabase();
+    if (!sb) { alert('Erro de conexão.'); return; }
+
+    // 1. Excluir da tabela admin_usuarios
+    var { error: delErr } = await sb.from('admin_usuarios').delete().eq('id', id);
+    if (delErr) { alert('Erro ao excluir administrador: ' + delErr.message); return; }
+
+    // 2. Tentar excluir do Supabase Auth via função RPC (SECURITY DEFINER)
+    var authMsg = '';
+    var { error: rpcErr } = await sb.rpc('excluir_admin_auth', { p_email: email });
+    if (rpcErr) {
+      if (rpcErr.message && (rpcErr.message.includes('Could not find') || rpcErr.message.includes('PGRST202'))) {
+        authMsg = '\n\n⚠️ A conta de autenticação NÃO foi removida automaticamente porque a função RPC ainda não foi criada no Supabase.\n\nPara remover também do Authentication, execute este SQL no Supabase (SQL Editor como role "postgres"):\n\nCREATE OR REPLACE FUNCTION public.excluir_admin_auth(p_email text) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, public AS $$ DECLARE v_id uuid; BEGIN SELECT id INTO v_id FROM auth.users WHERE email = p_email; IF v_id IS NOT NULL THEN DELETE FROM auth.users WHERE id = v_id; END IF; END; $$; GRANT EXECUTE ON FUNCTION public.excluir_admin_auth(text) TO anon, authenticated;';
+      } else {
+        authMsg = '\n\n⚠️ Administrador removido da lista, mas houve erro ao remover do Authentication: ' + rpcErr.message;
+      }
+    }
+
+    alert('✅ Administrador "' + nome + '" excluído com sucesso!' + authMsg);
+    await carregarListaAdmins();
+  } catch (e) {
+    alert('Erro ao excluir administrador: ' + (e.message || e));
+  }
 }
 
 function renderAdminAlterarSenha() {
