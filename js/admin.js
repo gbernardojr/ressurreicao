@@ -3,6 +3,8 @@ var AdminState = {
   searchError: '',
   selectedCliente: null,
   selectedMensalidades: [],
+  selectedFalecidos: [],
+  falecidosLocaisMap: {},
 };
 
 function formatarCpfCnpj(v) {
@@ -17,6 +19,8 @@ function renderAdminDashboard() {
   AdminState.searchError = '';
   AdminState.selectedCliente = null;
   AdminState.selectedMensalidades = [];
+  AdminState.selectedFalecidos = [];
+  AdminState.falecidosLocaisMap = {};
   AppState._mensalidadeAtual = null;
   AppState._boletoAtual = null;
 
@@ -192,16 +196,43 @@ async function handleAdminSelectCliente(clienteId) {
 
     AdminState.selectedCliente = cliente;
 
+    // Buscar mensalidades
     var busca = await sb.from('mensalidades').select()
       .eq('cliente_id', clienteId)
       .order('vecto', { ascending: true });
 
-    if (busca.error) { mensalidadesArea.innerHTML = '<p style="color:var(--danger)">Erro ao carregar mensalidades.</p>'; return; }
-
     AdminState.selectedMensalidades = busca.data || [];
+
+    // Buscar entes queridos falecidos do cliente
+    AdminState.selectedFalecidos = [];
+    AdminState.falecidosLocaisMap = {};
+
+    var buscaFalecidos = await sb.from('falecidos').select()
+      .eq('cliente_id', clienteId)
+      .order('nome', { ascending: true });
+
+    if (buscaFalecidos.data && buscaFalecidos.data.length > 0) {
+      AdminState.selectedFalecidos = buscaFalecidos.data;
+      var falecidoIds = AdminState.selectedFalecidos.map(function(f) { return f.id; });
+
+      var buscaLocais = await sb.from('falecido_locais').select()
+        .in('falecido_id', falecidoIds)
+        .order('data_inicio', { ascending: false });
+
+      if (buscaLocais.data) {
+        buscaLocais.data.forEach(function(loc) {
+          if (!AdminState.falecidosLocaisMap[loc.falecido_id]) {
+            AdminState.falecidosLocaisMap[loc.falecido_id] = [];
+          }
+          AdminState.falecidosLocaisMap[loc.falecido_id].push(loc);
+        });
+      }
+    }
+
     renderAdminMensalidades();
   } catch (e) {
-    mensalidadesArea.innerHTML = '<p style="color:var(--danger)">Erro ao conectar.</p>';
+    console.error('Erro ao selecionar cliente admin:', e);
+    mensalidadesArea.innerHTML = '<p style="color:var(--danger)">Erro ao carregar dados do cliente.</p>';
   }
 }
 
@@ -209,6 +240,8 @@ function renderAdminMensalidades() {
   var container = document.getElementById('adminMensalidadesArea');
   var cliente = AdminState.selectedCliente;
   var mensalidades = AdminState.selectedMensalidades;
+  var falecidos = AdminState.selectedFalecidos || [];
+  var locaisMap = AdminState.falecidosLocaisMap || {};
 
   var html =
     '<div class="card" style="background:var(--primary);color:#fff;margin-bottom:16px">' +
@@ -231,6 +264,54 @@ function renderAdminMensalidades() {
           '<div id="adminContaAuthResult" style="margin-top:8px;font-size:13px"></div>' +
         '</div>' : '') +
     '</div>';
+
+  // Seção de Entes Queridos Falecidos
+  html += '<div class="card" style="margin-bottom:16px">' +
+    '<h3 style="font-size:16px;font-weight:600;margin-bottom:12px;color:var(--primary-dark);display:flex;align-items:center;gap:8px">' +
+      '<span>&#x271D;</span> Entes Queridos Falecidos (' + falecidos.length + ')' +
+    '</h3>';
+
+  if (falecidos.length === 0) {
+    html += '<p style="font-size:14px;color:var(--text-secondary)">Nenhum ente querido falecido cadastrado para este cliente.</p>';
+  } else {
+    falecidos.forEach(function(f) {
+      var fLocais = locaisMap[f.id] || [];
+      html +=
+        '<div style="border:1px solid #e0e0e0;border-radius:8px;padding:14px;margin-bottom:12px;background:#fafafa">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+            '<div style="font-weight:700;font-size:15px;color:var(--text)">' + (f.nome || '-') + '</div>' +
+            (f.jazigo ? '<span style="font-size:12px;background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:12px;font-weight:600">Jazigo: ' + f.jazigo + '</span>' : '') +
+          '</div>' +
+          '<div class="detail-row" style="font-size:13px"><span class="detail-label">Data Nascimento</span><span class="detail-value">' + formatDateBr(f.data_nascimento) + '</span></div>' +
+          '<div class="detail-row" style="font-size:13px"><span class="detail-label">Data Falecimento</span><span class="detail-value">' + formatDateBr(f.data_falecimento) + '</span></div>' +
+          '<div class="detail-row" style="font-size:13px"><span class="detail-label">Data Sepultamento</span><span class="detail-value">' + formatDateBr(f.data_sepultamento) + '</span></div>' +
+          '<div class="detail-row" style="font-size:13px"><span class="detail-label">Data Exumação</span><span class="detail-value">' + formatDateBr(f.data_exumacao) + '</span></div>';
+
+      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed #ddd">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">&#128205; Locais de Sepultamento:</div>';
+
+      if (fLocais.length === 0) {
+        html += '<p style="font-size:12px;color:var(--text-secondary)">' + (f.jazigo ? 'Jazigo: ' + f.jazigo : 'Nenhum local específico cadastrado') + '</p>';
+      } else {
+        fLocais.forEach(function(l) {
+          html +=
+            '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:13px">' +
+              '<div style="font-weight:600;color:var(--primary-dark)">' + (l.jazigo || f.jazigo || l.local_tipo || 'Jazigo') + '</div>' +
+              '<div style="display:flex;gap:16px;margin-top:4px;color:var(--text-secondary);font-size:12px">' +
+                '<span>Quadra: <strong>' + (l.quadra || '-') + '</strong></span>' +
+                '<span>Carneira: <strong>' + (l.carneira || '-') + '</strong></span>' +
+                (l.data_inicio ? '<span>Início: <strong>' + formatDateBr(l.data_inicio) + '</strong></span>' : '') +
+              '</div>' +
+            '</div>';
+        });
+      }
+      html += '</div></div>';
+    });
+  }
+  html += '</div>';
+
+  // Seção de Mensalidades / Boletos
+  html += '<div style="font-size:16px;font-weight:600;margin:16px 0 8px;color:var(--text);display:flex;align-items:center;gap:8px"><span>&#128179;</span> Mensalidades / Boletos</div>';
 
   if (!mensalidades || mensalidades.length === 0) {
     html += '<div class="empty-state"><div class="icon">&#128237;</div><p>Nenhuma mensalidade encontrada para este cliente.</p></div>';
