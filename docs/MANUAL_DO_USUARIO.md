@@ -22,6 +22,7 @@ Este manual contém as instruções completas para utilização do **Sistema Res
    - [3.4. Consulta de Falecidos e Localizações na Área Admin](#34-consulta-de-falecidos-e-localizações-na-área-admin)
    - [3.5. Emissão e Visualização de Boletos pelo Admin](#35-emissão-e-visualização-de-boletos-pelo-admin)
    - [3.6. Gerenciamento de Usuários Administradores](#36-gerenciamento-de-usuários-administradores)
+   - [3.7. Alteração de Senha do Administrador](#37-alteração-de-senha-do-administrador)
 4. [Dúvidas Frequentes e Suporte](#4-dúvidas-frequentes-e-suporte)
 
 ---
@@ -176,6 +177,17 @@ Administradores têm permissão para gerenciar a equipe de acesso ao sistema:
 3. **Listagem e Status:**
    - Visualize a lista de administradores cadastrados.
    - Clique em **Desativar** para revogar temporariamente o acesso de um administrador ou em **Ativar** para reestabelecer o acesso.
+
+---
+
+### 3.7. Alteração de Senha do Administrador
+O administrador pode alterar a sua própria senha de acesso a qualquer momento:
+1. No painel principal do módulo administrativo, clique no botão **🔑 Alterar Minha Senha**.
+2. Preencha os campos:
+   - **Senha Atual:** Informe a sua senha de acesso atual.
+   - **Nova Senha:** Digite a nova senha desejada (mínimo de 6 caracteres).
+   - **Confirmar Nova Senha:** Digite novamente a nova senha para confirmação.
+3. Clique em **ALTERAR SENHA**. A nova senha entrará em vigor imediatamente para os próximos acessos.
 
 ---
 

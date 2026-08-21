@@ -196,6 +196,7 @@ async function handleRoute() {
       case '/mensalidades': renderMensalidades(); break;
       case '/boleto': renderBoleto(parts[1] ? parts[1].replace('id=', '') : null); break;
       case '/admin': if (AppState.isAdmin) renderAdminDashboard(); else navigate('#/login'); break;
+      case '/admin-alterar-senha': if (AppState.isAdmin) renderAdminAlterarSenha(); else navigate('#/login'); break;
       default: renderLogin();
     }
   } catch (e) {

@@ -42,7 +42,8 @@ function renderAdminDashboard() {
       '</div>' +
       '<div id="adminSearchResults"></div>' +
       '<div id="adminMensalidadesArea"></div>' +
-      '<div class="card" style="margin-top:16px">' +
+      '<div class="card" style="margin-top:16px;display:flex;flex-direction:column;gap:10px">' +
+        '<button class="btn btn-outline" onclick="renderAdminAlterarSenha()" style="width:100%">🔑 Alterar Minha Senha</button>' +
         '<button class="btn btn-outline" onclick="renderAdminGerenciar()" style="width:100%">⚙️ Gerenciar Administradores</button>' +
       '</div>' +
     '</div>';
@@ -1044,3 +1045,79 @@ async function handleAdminAtivar(id) {
     await carregarListaAdmins();
   } catch (e) { alert('Erro ao ativar.'); }
 }
+
+function renderAdminAlterarSenha() {
+  var adminEmail = (AppState.user && AppState.user.email) || (AppState.adminUser && AppState.adminUser.email) || '';
+  var adminNome = (AppState.adminUser && AppState.adminUser.nome) || 'Administrador';
+
+  var app = document.getElementById('app');
+  app.innerHTML =
+    '<div class="app-bar">' +
+      '<button class="btn-icon" onclick="renderAdminDashboard()">&#8592;</button>' +
+      '<span class="title">Alterar Senha do Admin</span>' +
+    '</div>' +
+    '<div class="main-content">' +
+      '<div class="card">' +
+        '<h2 style="font-size:18px;margin-bottom:8px;color:var(--primary-dark)">🔑 Alterar Minha Senha</h2>' +
+        '<p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Usuário atual: <strong>' + adminNome + '</strong> (' + (adminEmail || '-') + ')</p>' +
+        '<form id="adminAlterarSenhaForm">' +
+          '<div class="form-group"><label class="form-label">Senha Atual</label><input type="password" id="adminAltSenhaAtual" class="form-input" placeholder="Sua senha atual"></div>' +
+          '<div class="form-group"><label class="form-label">Nova Senha</label><input type="password" id="adminAltSenhaNova" class="form-input" placeholder="Mínimo 6 caracteres"></div>' +
+          '<div class="form-group"><label class="form-label">Confirmar Nova Senha</label><input type="password" id="adminAltSenhaConfirma" class="form-input" placeholder="Repita a nova senha"></div>' +
+          '<div id="adminAltSenhaError" class="alert alert-error hidden" style="margin-bottom:12px"></div>' +
+          '<div id="adminAltSenhaSuccess" class="alert alert-success hidden" style="margin-bottom:12px"></div>' +
+          '<button type="submit" id="adminAltSenhaBtn" class="btn btn-primary" style="width:100%;margin-top:12px">ALTERAR SENHA</button>' +
+        '</form>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('adminAlterarSenhaForm').addEventListener('submit', handleAdminAlterarSenha);
+}
+
+async function handleAdminAlterarSenha(e) {
+  e.preventDefault();
+  var atual = document.getElementById('adminAltSenhaAtual').value;
+  var nova = document.getElementById('adminAltSenhaNova').value;
+  var confirma = document.getElementById('adminAltSenhaConfirma').value;
+  var errEl = document.getElementById('adminAltSenhaError');
+  var okEl = document.getElementById('adminAltSenhaSuccess');
+  var btn = document.getElementById('adminAltSenhaBtn');
+
+  errEl.classList.add('hidden');
+  okEl.classList.add('hidden');
+
+  if (!atual || !nova || !confirma) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
+  if (nova.length < 6) { errEl.textContent = 'Nova senha deve ter pelo menos 6 caracteres'; errEl.classList.remove('hidden'); return; }
+  if (nova !== confirma) { errEl.textContent = 'As senhas não conferem'; errEl.classList.remove('hidden'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Alterando...';
+
+  try {
+    var sb = getSupabase();
+    if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ALTERAR SENHA'; return; }
+
+    var email = (AppState.user && AppState.user.email) || (AppState.adminUser && AppState.adminUser.email);
+    if (!email) { errEl.textContent = 'Usuário não autenticado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ALTERAR SENHA'; return; }
+
+    var reauth = await sb.auth.signInWithPassword({ email: email, password: atual });
+    if (reauth.error) { errEl.textContent = 'Senha atual incorreta.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ALTERAR SENHA'; return; }
+
+    var update = await sb.auth.updateUser({ password: nova });
+    if (update.error) { errEl.textContent = 'Erro ao alterar senha: ' + update.error.message; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ALTERAR SENHA'; return; }
+
+    okEl.textContent = 'Senha do administrador alterada com sucesso!';
+    okEl.classList.remove('hidden');
+    document.getElementById('adminAltSenhaAtual').value = '';
+    document.getElementById('adminAltSenhaNova').value = '';
+    document.getElementById('adminAltSenhaConfirma').value = '';
+    btn.disabled = false;
+    btn.textContent = 'ALTERAR SENHA';
+  } catch (err) {
+    errEl.textContent = 'Erro ao conectar. Tente novamente.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'ALTERAR SENHA';
+  }
+}
+
