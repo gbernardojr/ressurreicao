@@ -177,6 +177,7 @@ Administradores têm permissão para gerenciar a equipe de acesso ao sistema:
 3. **Listagem e Status:**
    - Visualize a lista de administradores cadastrados.
    - Clique em **Desativar** para revogar temporariamente o acesso de um administrador ou em **Ativar** para reestabelecer o acesso.
+   - Clique em **🗑️ Excluir** para remover permanentemente o administrador da lista e do Authentication do Supabase.
 
 ---
 
