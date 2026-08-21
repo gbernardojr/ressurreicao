@@ -895,7 +895,7 @@ async function renderAdminGerenciar() {
         '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nome do Administrador</label><input type="text" id="adminNovoNome" class="form-input" placeholder="Nome completo"></div>' +
         '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF do Administrador</label><input type="text" id="adminNovoCpf" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
         '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Email do Administrador</label><input type="email" id="adminNovoEmail" class="form-input" placeholder="email@exemplo.com"></div>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Senha temporária</label><input type="text" id="adminNovoSenha" class="form-input" value="Ress@2024"></div>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Senha temporária</label><div class="password-wrapper"><input type="password" id="adminNovoSenha" class="form-input" placeholder="Mínimo 6 caracteres"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'adminNovoSenha\', this)" title="Mostrar senha">👁️</button></div></div>' +
         '<div id="adminNovoError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:12px;font-size:14px"></div>' +
         '<div id="adminNovoSuccess" class="hidden" style="color:#388E3C;background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:12px;font-size:14px"></div>' +
         '<button class="btn btn-primary" onclick="handleAdminCadastrarNovo()" id="adminNovoBtn">CADASTRAR ADMIN</button>' +
@@ -1061,9 +1061,9 @@ function renderAdminAlterarSenha() {
         '<h2 style="font-size:18px;margin-bottom:8px;color:var(--primary-dark)">🔑 Alterar Minha Senha</h2>' +
         '<p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Usuário atual: <strong>' + adminNome + '</strong> (' + (adminEmail || '-') + ')</p>' +
         '<form id="adminAlterarSenhaForm">' +
-          '<div class="form-group"><label class="form-label">Senha Atual</label><input type="password" id="adminAltSenhaAtual" class="form-input" placeholder="Sua senha atual"></div>' +
-          '<div class="form-group"><label class="form-label">Nova Senha</label><input type="password" id="adminAltSenhaNova" class="form-input" placeholder="Mínimo 6 caracteres"></div>' +
-          '<div class="form-group"><label class="form-label">Confirmar Nova Senha</label><input type="password" id="adminAltSenhaConfirma" class="form-input" placeholder="Repita a nova senha"></div>' +
+          '<div class="form-group"><label class="form-label">Senha Atual</label><div class="password-wrapper"><input type="password" id="adminAltSenhaAtual" class="form-input" placeholder="Sua senha atual"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'adminAltSenhaAtual\', this)" title="Mostrar senha">👁️</button></div></div>' +
+          '<div class="form-group"><label class="form-label">Nova Senha</label><div class="password-wrapper"><input type="password" id="adminAltSenhaNova" class="form-input" placeholder="Mínimo 6 caracteres"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'adminAltSenhaNova\', this)" title="Mostrar senha">👁️</button></div></div>' +
+          '<div class="form-group"><label class="form-label">Confirmar Nova Senha</label><div class="password-wrapper"><input type="password" id="adminAltSenhaConfirma" class="form-input" placeholder="Repita a nova senha"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'adminAltSenhaConfirma\', this)" title="Mostrar senha">👁️</button></div></div>' +
           '<div id="adminAltSenhaError" class="alert alert-error hidden" style="margin-bottom:12px"></div>' +
           '<div id="adminAltSenhaSuccess" class="alert alert-success hidden" style="margin-bottom:12px"></div>' +
           '<button type="submit" id="adminAltSenhaBtn" class="btn btn-primary" style="width:100%;margin-top:12px">ALTERAR SENHA</button>' +

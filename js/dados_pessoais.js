@@ -24,9 +24,9 @@ function renderDadosPessoais() {
       '<div class="card">' +
         '<h3 style="margin-bottom:12px">Alterar Senha</h3>' +
         '<form id="alterarSenhaForm">' +
-          '<div class="form-group"><label class="form-label">Senha Atual</label><input type="password" id="altSenhaAtual" class="form-input" placeholder="Senha atual"></div>' +
-          '<div class="form-group"><label class="form-label">Nova Senha</label><input type="password" id="altSenhaNova" class="form-input" placeholder="M\u00ednimo 6 caracteres"></div>' +
-          '<div class="form-group"><label class="form-label">Confirmar Nova Senha</label><input type="password" id="altSenhaConfirma" class="form-input" placeholder="Repita a nova senha"></div>' +
+          '<div class="form-group"><label class="form-label">Senha Atual</label><div class="password-wrapper"><input type="password" id="altSenhaAtual" class="form-input" placeholder="Senha atual"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'altSenhaAtual\', this)" title="Mostrar senha">👁️</button></div></div>' +
+          '<div class="form-group"><label class="form-label">Nova Senha</label><div class="password-wrapper"><input type="password" id="altSenhaNova" class="form-input" placeholder="Mínimo 6 caracteres"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'altSenhaNova\', this)" title="Mostrar senha">👁️</button></div></div>' +
+          '<div class="form-group"><label class="form-label">Confirmar Nova Senha</label><div class="password-wrapper"><input type="password" id="altSenhaConfirma" class="form-input" placeholder="Repita a nova senha"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'altSenhaConfirma\', this)" title="Mostrar senha">👁️</button></div></div>' +
           '<div id="altSenhaError" class="alert alert-error hidden"></div>' +
           '<div id="altSenhaSuccess" class="alert alert-success hidden"></div>' +
           '<button type="submit" id="altSenhaBtn" class="btn btn-primary">ALTERAR SENHA</button>' +

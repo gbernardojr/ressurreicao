@@ -87,7 +87,10 @@ function renderLogin() {
           '</div></div>' +
           '<div class="form-group"><div class="input-icon">' +
             '<span class="icon">&#128274;</span>' +
-            '<input type="password" id="senhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
+            '<div class="password-wrapper" style="width:100%">' +
+              '<input type="password" id="senhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
+              '<button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'senhaInput\', this)" title="Mostrar senha">👁️</button>' +
+            '</div>' +
           '</div></div>' +
           '<div id="loginError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
           '<button type="submit" id="loginBtn" class="btn btn-primary">ENTRAR</button>' +
@@ -123,7 +126,10 @@ function renderAdminLogin() {
           '</div></div>' +
           '<div class="form-group"><div class="input-icon">' +
             '<span class="icon">&#128274;</span>' +
-            '<input type="password" id="adminSenhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
+            '<div class="password-wrapper" style="width:100%">' +
+              '<input type="password" id="adminSenhaInput" class="form-input" placeholder="Sua senha de acesso" autocomplete="current-password">' +
+              '<button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'adminSenhaInput\', this)" title="Mostrar senha">👁️</button>' +
+            '</div>' +
           '</div></div>' +
           '<div id="loginError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
           '<button type="submit" id="loginBtn" class="btn btn-primary">ENTRAR COMO ADMIN</button>' +
@@ -274,8 +280,8 @@ function renderCadastro() {
       '<form id="cadastroForm">' +
         '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF</label><input type="text" id="cadCpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
         '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Email</label><input type="email" id="cadEmailInput" class="form-input" placeholder="seu@email.com"></div>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nova Senha</label><input type="password" id="cadSenhaInput" class="form-input" placeholder="Mínimo 6 caracteres"></div>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Confirmar Senha</label><input type="password" id="cadConfirmaInput" class="form-input" placeholder="Repita a senha"></div>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nova Senha</label><div class="password-wrapper"><input type="password" id="cadSenhaInput" class="form-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'cadSenhaInput\', this)" title="Mostrar senha">👁️</button></div></div>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Confirmar Senha</label><div class="password-wrapper"><input type="password" id="cadConfirmaInput" class="form-input" placeholder="Repita a senha" autocomplete="new-password"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'cadConfirmaInput\', this)" title="Mostrar senha">👁️</button></div></div>' +
         '<div id="cadError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
         '<div id="cadSuccess" class="hidden" style="color:#388E3C;background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
         '<button type="submit" id="cadBtn" class="btn btn-primary">CADASTRAR</button>' +
@@ -377,11 +383,17 @@ function renderRedefinirSenha() {
         '<form id="redefinirSenhaForm">' +
           '<div class="form-group"><div class="input-icon">' +
             '<span class="icon">&#128274;</span>' +
-            '<input type="password" id="novaSenhaInput" class="form-input" placeholder="Nova senha (mínimo 6 caracteres)" autocomplete="new-password">' +
+            '<div class="password-wrapper" style="width:100%">' +
+              '<input type="password" id="novaSenhaInput" class="form-input" placeholder="Nova senha (mínimo 6 caracteres)" autocomplete="new-password">' +
+              '<button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'novaSenhaInput\', this)" title="Mostrar senha">👁️</button>' +
+            '</div>' +
           '</div></div>' +
           '<div class="form-group"><div class="input-icon">' +
             '<span class="icon">&#128274;</span>' +
-            '<input type="password" id="confirmaSenhaInput" class="form-input" placeholder="Confirmar nova senha" autocomplete="new-password">' +
+            '<div class="password-wrapper" style="width:100%">' +
+              '<input type="password" id="confirmaSenhaInput" class="form-input" placeholder="Confirmar nova senha" autocomplete="new-password">' +
+              '<button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'confirmaSenhaInput\', this)" title="Mostrar senha">👁️</button>' +
+            '</div>' +
           '</div></div>' +
           '<div id="redefinirError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
           '<div id="redefinirSuccess" class="hidden" style="color:#388E3C;background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +

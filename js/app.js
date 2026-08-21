@@ -18,6 +18,30 @@ function showToast(message) {
   setTimeout(() => t.remove(), 3000);
 }
 
+// Toggle visibilidade de senha (olhinho)
+function toggleSenha(id, btn) {
+  var input = document.getElementById(id);
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+    btn.title = 'Ocultar senha';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁️';
+    btn.title = 'Mostrar senha';
+  }
+}
+
+// Helper para gerar HTML de campo de senha com botão de visualização
+function inputSenhaHtml(id, placeholder, autocomplete) {
+  autocomplete = autocomplete || 'current-password';
+  return '<div class="password-wrapper">' +
+    '<input type="password" id="' + id + '" class="form-input" placeholder="' + placeholder + '" autocomplete="' + autocomplete + '">' +
+    '<button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'' + id + '\', this)" title="Mostrar senha">👁️</button>' +
+    '</div>';
+}
+
 function parseDateSafe(s) {
   if (!s) return null;
   var parts = s.split('-');

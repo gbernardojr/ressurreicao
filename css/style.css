@@ -193,6 +193,35 @@ body {
   font-size: 20px;
 }
 
+/* Toggle visibilidade de senha */
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper .form-input {
+  padding-right: 44px;
+}
+
+.btn-toggle-senha {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.btn-toggle-senha:hover { color: var(--primary); }
+
 /* Alert messages */
 .alert {
   padding: 12px 16px;
