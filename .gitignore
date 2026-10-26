@@ -15,3 +15,15 @@
 !.gitignore
 
 .vercel
+
+# Sincronizador: apenas código-fonte (sem .env, chaves, logs ou executáveis)
+!/sincronizacao
+/sincronizacao/*
+!/sincronizacao/src
+!/sincronizacao/src/**
+/sincronizacao/src/database/firebird_py.py
+!/sincronizacao/package.json
+!/sincronizacao/package-lock.json
+!/sincronizacao/manual-sync.js
+!/sincronizacao/sincronizar-manualmente.bat
+

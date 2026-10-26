@@ -1,0 +1,22 @@
+{
+  "name": "sincronizacao-mensalidades",
+  "version": "1.0.0",
+  "description": "Sincronização entre Firebird e Supabase",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "sync": "node src/sync.js",
+    "test": "node src/test.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "date-fns": "^3.0.6",
+    "dotenv": "^16.3.1",
+    "express": "^5.2.1",
+    "node-cron": "^3.0.3",
+    "node-firebird": "^2.0.2",
+    "odbc": "^2.5.0",
+    "pg": "^8.22.0"
+  }
+}
