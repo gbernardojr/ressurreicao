@@ -10,6 +10,27 @@ const AppState = {
   adminUser: null,
 };
 
+var AVISO_BOLETO_COMPENSACAO = 'Pagamento por boleto pode levar até 3 dias úteis para serem compensados. Assim, uma pendência financeira pode continuar aparecendo durante este período.';
+
+function htmlAvisoBoleto() {
+  return '<div style="background:#E3F2FD;color:#1565C0;border-left:4px solid #1565C0;border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.4">' + AVISO_BOLETO_COMPENSACAO + '</div>';
+}
+
+function normalizarJazigo(valor) {
+  return String(valor == null ? '' : valor).trim().toUpperCase().replace(/[\s-]+/g, '');
+}
+
+function extrairJazigos(mensalidades) {
+  var mapa = {};
+  (mensalidades || []).forEach(function(m) {
+    var original = m.jazigo == null ? '' : String(m.jazigo).trim();
+    if (!original) return;
+    var chave = normalizarJazigo(original);
+    if (!mapa[chave]) mapa[chave] = original;
+  });
+  return Object.keys(mapa).sort().map(function(k) { return mapa[k]; });
+}
+
 function showToast(message) {
   const t = document.createElement('div');
   t.textContent = message;
@@ -100,6 +121,11 @@ async function carregarDadosCliente() {
           cpfCnpj = authCliente.data ? authCliente.data.cpf_cnpj : null;
         } catch (e) {}
 
+        // Se não encontrar por email e o email for um email alternativo, extrair CPF do email
+        if (!cpfCnpj && user.email && user.email.endsWith('@sememail.com.br')) {
+          cpfCnpj = user.email.replace('@sememail.com.br', '');
+        }
+
         if (cpfCnpj) {
           var adminResult = await sb.from('admin_usuarios').select().eq('cpf', cpfCnpj).eq('ativo', true).maybeSingle();
           if (adminResult && adminResult.data) admin = adminResult.data;
@@ -120,8 +146,18 @@ async function carregarDadosCliente() {
       AppState.configBanco = configResult ? configResult.data : null;
     } catch (e) {}
 
+    // Tentar buscar cliente por email, ou por CPF se o email for um email alternativo
     var clienteResult = await sb.from('clientes').select().eq('email', user.email).maybeSingle();
     var cliente = clienteResult ? clienteResult.data : null;
+    
+    // Se não encontrar por email e o email for um email alternativo (cpf@sememail.com.br),
+    // tentar buscar pelo CPF
+    if (!cliente && user.email && user.email.endsWith('@sememail.com.br')) {
+      var cpf = user.email.replace('@sememail.com.br', '');
+      var clienteByCpf = await sb.from('clientes').select().eq('cpf_cnpj', cpf).maybeSingle();
+      cliente = clienteByCpf ? clienteByCpf.data : null;
+    }
+    
     AppState.cliente = cliente;
 
     if (cliente) {
@@ -138,21 +174,32 @@ async function carregarDadosCliente() {
           .in('cliente_id', todosIds)
           .order('vecto', { ascending: true });
         AppState.mensalidades = mensalidades || [];
-
-        var jazigosSet = {};
-        (AppState.mensalidades || []).forEach(function(m) {
-          if (m.jazigo) jazigosSet[m.jazigo] = true;
-        });
-        AppState.todosJazigos = Object.keys(jazigosSet).sort();
+        AppState.todosJazigos = extrairJazigos(AppState.mensalidades);
         AppState.jazigoSelecionado = null;
       } else {
         var { data: mensalidades } = await sb.from('mensalidades').select().eq('cliente_id', cliente.id).order('vecto', { ascending: true });
         AppState.mensalidades = mensalidades || [];
       }
     } else {
-      AppState.mensalidades = [];
-      AppState.todosJazigos = [];
-      AppState.jazigoSelecionado = null;
+      // Se não encontrou cliente por email, tentar encontrar por CPF (caso de email alternativo)
+      if (user.email && user.email.endsWith('@sememail.com.br')) {
+        var cpf = user.email.replace('@sememail.com.br', '');
+        var { data: todos } = await sb.from('clientes').select('id, codigo_propri').eq('cpf_cnpj', cpf);
+        var todosIds = (todos || []).map(function(c) { return c.id; });
+        if (todosIds.length > 0) {
+          var { data: mensalidades } = await sb.from('mensalidades')
+            .select()
+            .in('cliente_id', todosIds)
+            .order('vecto', { ascending: true });
+          AppState.mensalidades = mensalidades || [];
+          AppState.todosJazigos = extrairJazigos(AppState.mensalidades);
+          AppState.jazigoSelecionado = null;
+        }
+      } else {
+        AppState.mensalidades = [];
+        AppState.todosJazigos = [];
+        AppState.jazigoSelecionado = null;
+      }
     }
   } catch (e) { console.error('Erro carregar dados:', e); }
 }
@@ -176,13 +223,20 @@ function selecionarJazigo(jazigo) {
 function getMensalidadesFiltradas() {
   var lista = AppState.mensalidades;
   if (AppState.jazigoSelecionado) {
-    lista = lista.filter(function(m) { return m.jazigo === AppState.jazigoSelecionado; });
+    var alvo = normalizarJazigo(AppState.jazigoSelecionado);
+    lista = lista.filter(function(m) { return normalizarJazigo(m.jazigo) === alvo; });
   }
   return lista;
 }
 
 function navigate(hash) {
-  window.location.hash = hash;
+  if (window.location.hash === hash) {
+    // Mesmo hash não dispara hashchange; renderiza direto para o caso
+    // de a tela estar dessincronizada com a URL (ex.: voltar não respondia)
+    handleRoute();
+  } else {
+    window.location.hash = hash;
+  }
 }
 
 async function handleRoute() {
@@ -203,6 +257,11 @@ async function handleRoute() {
     if (session && (!AppState.user || (!AppState.cliente && !AppState.isAdmin))) {
       await carregarDadosCliente();
     }
+
+    // Se a URL mudou durante os awaits (sessão/carregamento de dados),
+    // o handleRoute mais recente é quem deve renderizar; descarta este.
+    var hashAtual = window.location.hash || '#/login';
+    if (hashAtual !== hash) return;
 
     var parts = hash.replace('#', '').split('?');
     var route = parts[0].replace(/\/$/, '');

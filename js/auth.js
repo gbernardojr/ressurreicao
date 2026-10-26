@@ -162,23 +162,26 @@ async function handleLogin(e) {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão. Tente novamente.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
 
-    var { data: clientesList } = await sb.from('clientes').select('id, email, nome').eq('cpf_cnpj', cpf);
+    // Buscar cliente pelo CPF
+    var { data: clientesList } = await sb.from('clientes').select('id, email, nome, cpf_cnpj').eq('cpf_cnpj', cpf);
     var cliente = null;
     if (clientesList && clientesList.length > 0) {
       cliente = clientesList.find(function(c) { return c.email; }) || clientesList[0];
     }
 
     if (!cliente) { errEl.textContent = 'CPF não encontrado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
-    if (!cliente.email) { errEl.textContent = 'Cliente sem email cadastrado. Entre em contato.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
 
-    var auth = await sb.auth.signInWithPassword({ email: cliente.email, password: senha });
+    // Tentar login com email se existir, ou com CPF como email alternativo
+    var emailParaLogin = cliente.email || (cpf + '@sememail.com.br');
+    
+    var auth = await sb.auth.signInWithPassword({ email: emailParaLogin, password: senha });
     if (auth.error) {
       var msg = auth.error.message || '';
-      var display = 'Email ou senha incorretos.';
+      var display = 'CPF ou senha incorretos.';
       if (msg.includes('Email not confirmed') || msg.includes('not confirmed')) {
         display = 'E-mail ainda não confirmado. Verifique sua caixa de entrada.';
       } else if (msg.includes('Invalid login')) {
-        display = 'Email ou senha incorretos. Se ainda não tem conta, clique em "Primeiro acesso".';
+        display = 'CPF ou senha incorretos. Se ainda não tem conta, clique em "Primeiro acesso".';
       }
       errEl.innerHTML = display + ' <a href="#/cadastro" style="color:#1565C0;text-decoration:underline">Criar conta</a>';
       errEl.classList.remove('hidden');
@@ -224,6 +227,19 @@ async function handleAdminLogin(e) {
       var { data: clienteReg } = await sb.from('clientes').select('email').eq('cpf_cnpj', cpf).maybeSingle();
       if (clienteReg && clienteReg.email) {
         adminEmail = clienteReg.email;
+      }
+    }
+
+    // Se não tiver email, usar CPF como email alternativo
+    if (!adminEmail) {
+      var { data: adminReg } = await sb.from('admin_usuarios').select('ativo').eq('cpf', cpf).eq('ativo', true).maybeSingle();
+      if (adminReg) {
+        adminEmail = cpf + '@sememail.com.br';
+      } else {
+        var { data: clienteReg } = await sb.from('clientes').select('id').eq('cpf_cnpj', cpf).maybeSingle();
+        if (clienteReg) {
+          adminEmail = cpf + '@sememail.com.br';
+        }
       }
     }
 
@@ -275,18 +291,18 @@ function renderCadastro() {
   app.innerHTML =
     '<div class="app-bar"><button class="btn-icon" onclick="navigate(\'#/login\')">&#8592;</button><span class="title">Primeiro Acesso</span></div>' +
     '<div class="main-content">' +
-      '<h2 style="margin-bottom:8px">Cadastre sua senha</h2>' +
-      '<p style="color:#757575;margin-bottom:24px">Informe seu CPF e email para criar sua conta</p>' +
-      '<form id="cadastroForm">' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF</label><input type="text" id="cadCpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Email</label><input type="email" id="cadEmailInput" class="form-input" placeholder="seu@email.com"></div>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nova Senha</label><div class="password-wrapper"><input type="password" id="cadSenhaInput" class="form-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'cadSenhaInput\', this)" title="Mostrar senha">👁️</button></div></div>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Confirmar Senha</label><div class="password-wrapper"><input type="password" id="cadConfirmaInput" class="form-input" placeholder="Repita a senha" autocomplete="new-password"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'cadConfirmaInput\', this)" title="Mostrar senha">👁️</button></div></div>' +
-        '<div id="cadError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
-        '<div id="cadSuccess" class="hidden" style="color:#388E3C;background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
-        '<button type="submit" id="cadBtn" class="btn btn-primary">CADASTRAR</button>' +
-      '</form>' +
-      '<button class="link" onclick="navigate(\'#/login\')">Já tem conta? Faça login</button>' +
+    '<h2 style="margin-bottom:8px">Cadastre sua senha</h2>' +
+    '<p style="color:#757575;margin-bottom:24px">Informe seu CPF para criar sua conta. Email é opcional.</p>' +
+    '<form id="cadastroForm">' +
+      '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF</label><input type="text" id="cadCpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
+      '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Email (opcional)</label><input type="email" id="cadEmailInput" class="form-input" placeholder="seu@email.com"></div>' +
+      '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nova Senha</label><div class="password-wrapper"><input type="password" id="cadSenhaInput" class="form-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'cadSenhaInput\', this)" title="Mostrar senha">👁️</button></div></div>' +
+      '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Confirmar Senha</label><div class="password-wrapper"><input type="password" id="cadConfirmaInput" class="form-input" placeholder="Repita a senha" autocomplete="new-password"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'cadConfirmaInput\', this)" title="Mostrar senha">👁️</button></div></div>' +
+      '<div id="cadError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
+      '<div id="cadSuccess" class="hidden" style="color:#388E3C;background:#E8F5E9;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px"></div>' +
+      '<button type="submit" id="cadBtn" class="btn btn-primary">CADASTRAR</button>' +
+    '</form>' +
+    '<button class="link" onclick="navigate(\'#/login\')">Já tem conta? Faça login</button>' +
     '</div>';
 
   document.getElementById('cadCpfInput').addEventListener('input', function() { this.value = formatarCpf(this.value); });
@@ -340,7 +356,13 @@ async function handleEsqueciSenha(e) {
     var cliente = clientesList && clientesList.length > 0 ? clientesList.find(function(c) { return c.email; }) || clientesList[0] : null;
 
     if (!cliente) { errEl.textContent = 'CPF não encontrado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
-    if (!cliente.email) { errEl.textContent = 'Cliente sem e-mail cadastrado. Procure a recepção.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
+    if (!cliente.email) { 
+      errEl.textContent = 'Cliente sem e-mail cadastrado. Não é possível recuperar senha sem e-mail. Procure a recepção para cadastrar um e-mail.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'ENVIAR LINK';
+      return;
+    }
 
     var auth = await sb.auth.resetPasswordForEmail(cliente.email, {
       redirectTo: window.location.origin + '/#/redefinir-senha',
@@ -481,8 +503,8 @@ async function handleCadastro(e) {
     var cliente = clientesList && clientesList.length > 0 ? clientesList.find(function(c) { return c.email; }) || clientesList[0] : null;
     if (!cliente) { errEl.textContent = 'CPF não encontrado. Procure a recepção.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
 
-    var emailFinal = cliente.email || email;
-    if (!emailFinal) { errEl.textContent = 'Informe um email para cadastro.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
+    // Usar email informado ou CPF como email alternativo se não houver email
+    var emailFinal = cliente.email || email || (cpf + '@sememail.com.br');
 
     var auth = await sb.auth.signUp({ email: emailFinal, password: senha });
 
@@ -499,8 +521,9 @@ async function handleCadastro(e) {
       return;
     }
 
-    if (!cliente.email && emailFinal) {
-      await sb.from('clientes').update({ email: emailFinal }).eq('id', cliente.id);
+    // Atualizar email no banco se foi informado um email e o cliente não tinha
+    if (!cliente.email && email) {
+      await sb.from('clientes').update({ email: email }).eq('id', cliente.id);
     }
 
     var signInResult = await sb.auth.signInWithPassword({ email: emailFinal, password: senha });

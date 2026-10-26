@@ -38,8 +38,10 @@ function renderMensalidadesList() {
   else if (_mensalidadesFilter === 'vencido') filtered = filtered.filter(function(m) { return !m.pago && parseDateSafe(m.vecto) < hoje; });
   else if (_mensalidadesFilter === 'pagas') filtered = filtered.filter(function(m) { return m.pago; });
 
+  var aviso = htmlAvisoBoleto();
+
   if (!filtered || filtered.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:48px 16px;color:#757575"><div style="font-size:48px;margin-bottom:16px;opacity:0.5">&#128237;</div><p>Nenhuma mensalidade encontrada</p></div>';
+    container.innerHTML = aviso + '<div style="text-align:center;padding:48px 16px;color:#757575"><div style="font-size:48px;margin-bottom:16px;opacity:0.5">&#128237;</div><p>Nenhuma mensalidade encontrada</p></div>';
     return;
   }
 
@@ -65,6 +67,6 @@ function renderMensalidadesList() {
         (isPago && m.pagto ? '<div style="font-size:14px;color:#388E3C;margin-top:4px">Pago em: ' + formatDate(m.pagto) + '</div>' : '') +
       '</div>';
   });
-  container.innerHTML = html;
+  container.innerHTML = aviso + html;
 }
 

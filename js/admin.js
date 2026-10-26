@@ -8,10 +8,34 @@ var AdminState = {
 };
 
 function formatarCpfCnpj(v) {
-  var d = v.replace(/\D/g, '');
-  if (d.length <= 6) return d;
+  var str = String(v == null ? '' : v).trim();
+  if (/[A-Za-z]/.test(str)) {
+    return str.toUpperCase().replace(/[^0-9A-Z\-]/g, '').slice(0, 18);
+  }
+  var d = str.replace(/\D/g, '');
+  if (d.length <= 6) return str.replace(/[^0-9\-]/g, '').slice(0, 18);
   if (d.length <= 11) return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9,11);
   return d.slice(0,2) + '.' + d.slice(2,5) + '.' + d.slice(5,8) + '/' + d.slice(8,12) + '-' + d.slice(12,14);
+}
+
+function variantesCodigo(valor) {
+  var base = String(valor == null ? '' : valor).trim().toUpperCase().replace(/[^0-9A-Z\-]/g, '');
+  var variantes = [];
+  function adicionar(v) {
+    if (v && variantes.indexOf(v) === -1) variantes.push(v);
+  }
+  adicionar(base);
+  var semHifen = base.replace(/-/g, '');
+  adicionar(semHifen);
+  var comHifen = semHifen.match(/^(\d{1,4})([A-Z])$/);
+  if (comHifen) {
+    adicionar(comHifen[1].padStart(4, '0') + '-' + comHifen[2]);
+    adicionar(comHifen[1].padStart(4, '0') + comHifen[2]);
+  }
+  if (/^\d{1,4}$/.test(base)) {
+    adicionar(base.padStart(4, '0'));
+  }
+  return variantes;
 }
 
 function renderAdminDashboard() {
@@ -35,7 +59,7 @@ function renderAdminDashboard() {
         '<h2 style="font-size:18px;margin-bottom:16px;color:var(--primary-dark)">🔍 Consulta de Clientes / Jazigos</h2>' +
         '<p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Digite o CPF, CNPJ ou Número do Jazigo (Código) do cliente para acessar os boletos.</p>' +
         '<div class="admin-search-box">' +
-          '<input type="text" id="adminSearchInput" class="form-input" placeholder="CPF, CNPJ ou Jazigo (ex: 0252)" maxlength="18">' +
+          '<input type="text" id="adminSearchInput" class="form-input" placeholder="CPF, CNPJ ou Jazigo (ex: 0252 ou 0123-A)" maxlength="18">' +
           '<button id="adminSearchBtn" class="btn btn-primary" style="margin-top:12px" onclick="handleAdminSearch()">BUSCAR</button>' +
         '</div>' +
         '<div id="adminSearchError" class="alert alert-error hidden" style="margin-top:12px"></div>' +
@@ -85,21 +109,15 @@ async function handleAdminSearch() {
     if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'BUSCAR'; return; }
 
     var conditions = [];
+    var variantes = variantesCodigo(rawVal);
 
-    if (digits.length === 11 || digits.length === 14) {
+    if ((digits.length === 11 || digits.length === 14) && !/[A-Za-z]/.test(rawVal)) {
       conditions.push('cpf_cnpj.eq.' + digits);
     }
 
-    conditions.push('codigo_propri.eq.' + rawVal);
-
-    if (digits && digits !== rawVal) {
-      conditions.push('codigo_propri.eq.' + digits);
-    }
-
-    if (digits && digits.length <= 4) {
-      var padded = digits.padStart(4, '0');
-      conditions.push('codigo_propri.eq.' + padded);
-    }
+    variantes.forEach(function(v) {
+      conditions.push('codigo_propri.eq.' + v);
+    });
 
     var busca = await sb.from('clientes')
       .select('id, codigo_propri, cpf_cnpj, nome, telefone, email, endereco, bairro, cidade, estado')
@@ -118,13 +136,7 @@ async function handleAdminSearch() {
     AdminState.searchResults = busca.data || [];
 
     if (AdminState.searchResults.length === 0 && rawVal) {
-      var jazigoConds = ['jazigo.eq.' + rawVal];
-      if (digits) {
-        jazigoConds.push('jazigo.eq.' + digits);
-        if (digits.length <= 4) {
-          jazigoConds.push('jazigo.eq.' + digits.padStart(4, '0'));
-        }
-      }
+      var jazigoConds = variantes.map(function(v) { return 'jazigo.eq.' + v; });
 
       var buscaJazigo = await sb.from('mensalidades')
         .select('cliente_id')
@@ -315,7 +327,7 @@ function renderAdminMensalidades() {
   html += '<div style="font-size:16px;font-weight:600;margin:16px 0 8px;color:var(--text);display:flex;align-items:center;gap:8px"><span>&#128179;</span> Mensalidades / Boletos</div>';
 
   if (!mensalidades || mensalidades.length === 0) {
-    html += '<div class="empty-state"><div class="icon">&#128237;</div><p>Nenhuma mensalidade encontrada para este cliente.</p></div>';
+    html += htmlAvisoBoleto() + '<div class="empty-state"><div class="icon">&#128237;</div><p>Nenhuma mensalidade encontrada para este cliente.</p></div>';
     container.innerHTML = html;
     return;
   }
@@ -354,8 +366,10 @@ function renderAdminMensalidadesList(filter) {
   else if (filter === 'vencido') filtered = filtered.filter(function(m) { return !m.pago && parseDateSafe(m.vecto) < hoje; });
   else if (filter === 'pagas') filtered = filtered.filter(function(m) { return m.pago; });
 
+  var aviso = htmlAvisoBoleto();
+
   if (!filtered || filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">&#128237;</div><p>Nenhuma mensalidade encontrada</p></div>';
+    container.innerHTML = aviso + '<div class="empty-state"><div class="icon">&#128237;</div><p>Nenhuma mensalidade encontrada</p></div>';
     return;
   }
 
@@ -380,7 +394,7 @@ function renderAdminMensalidadesList(filter) {
         (isPago && m.pagto ? '<div style="font-size:14px;color:#388E3C;margin-top:4px">Pago em: ' + formatDate(m.pagto) + '</div>' : '') +
       '</div>';
   });
-  container.innerHTML = html;
+  container.innerHTML = aviso + html;
 }
 
 function handleAdminSelectBoleto(mensalidadeId) {
