@@ -1,9 +1,16 @@
-function formatarCpf(v) {
-  var d = v.replace(/\D/g, '');
+function formatarDocumento(v) {
+  var d = String(v == null ? '' : v).replace(/\D/g, '');
+  if (d.length > 14) d = d.slice(0, 14);
   if (d.length <= 3) return d;
   if (d.length <= 6) return d.slice(0,3) + '.' + d.slice(3);
   if (d.length <= 9) return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6);
-  return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9,11);
+  if (d.length <= 11) return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9,11);
+  return d.slice(0,2) + '.' + d.slice(2,5) + '.' + d.slice(5,8) + '/' + d.slice(8,12) + '-' + d.slice(12,14);
+}
+
+function documentoValido(v) {
+  var d = String(v == null ? '' : v).replace(/\D/g, '');
+  return d.length === 11 || d.length === 14;
 }
 
 var deferredPrompt = null;
@@ -83,7 +90,7 @@ function renderLogin() {
         '<form id="loginForm">' +
           '<div class="form-group"><div class="input-icon">' +
             '<span class="icon">&#128100;</span>' +
-            '<input type="text" id="cpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="username">' +
+            '<input type="text" id="cpfInput" class="form-input" placeholder="CPF ou CNPJ" maxlength="18" inputmode="numeric" autocomplete="username">' +
           '</div></div>' +
           '<div class="form-group"><div class="input-icon">' +
             '<span class="icon">&#128274;</span>' +
@@ -106,7 +113,7 @@ function renderLogin() {
     '</div>';
 
   document.getElementById('cpfInput').addEventListener('input', function() {
-    this.value = formatarCpf(this.value);
+    this.value = formatarDocumento(this.value);
   });
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
 }
@@ -123,7 +130,7 @@ function renderAdminLogin() {
         '<form id="adminLoginForm">' +
           '<div class="form-group"><div class="input-icon">' +
             '<span class="icon">&#128100;</span>' +
-            '<input type="text" id="adminCpfInput" class="form-input" placeholder="CPF do Administrador" maxlength="14" inputmode="numeric" autocomplete="username">' +
+            '<input type="text" id="adminCpfInput" class="form-input" placeholder="CPF ou CNPJ do Administrador" maxlength="18" inputmode="numeric" autocomplete="username">' +
           '</div></div>' +
           '<div class="form-group"><div class="input-icon">' +
             '<span class="icon">&#128274;</span>' +
@@ -140,21 +147,21 @@ function renderAdminLogin() {
     '</div>';
 
   document.getElementById('adminCpfInput').addEventListener('input', function() {
-    this.value = formatarCpf(this.value);
+    this.value = formatarDocumento(this.value);
   });
   document.getElementById('adminLoginForm').addEventListener('submit', handleAdminLogin);
 }
 
 async function handleLogin(e) {
   e.preventDefault();
-  var cpf = document.getElementById('cpfInput').value.replace(/\D/g, '');
+  var documento = document.getElementById('cpfInput').value.replace(/\D/g, '');
   var senha = document.getElementById('senhaInput').value;
   var errEl = document.getElementById('loginError');
   var btn = document.getElementById('loginBtn');
 
   errEl.classList.add('hidden');
-  if (!cpf || !senha) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
-  if (cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
+  if (!documento || !senha) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
+  if (!documentoValido(documento)) { errEl.textContent = 'CPF/CNPJ inválido'; errEl.classList.remove('hidden'); return; }
 
   btn.disabled = true;
   btn.textContent = 'Entrando...';
@@ -163,26 +170,33 @@ async function handleLogin(e) {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão. Tente novamente.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
 
-    // Buscar cliente pelo CPF
-    var { data: clientesList } = await sb.from('clientes').select('id, email, nome, cpf_cnpj').eq('cpf_cnpj', cpf);
+    // Buscar cliente pelo CPF ou CNPJ
+    var { data: clientesList } = await sb.from('clientes').select('id, email, nome, cpf_cnpj').eq('cpf_cnpj', documento);
     var cliente = null;
     if (clientesList && clientesList.length > 0) {
       cliente = clientesList.find(function(c) { return c.email; }) || clientesList[0];
     }
 
-    if (!cliente) { errEl.textContent = 'CPF não encontrado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
+    if (!cliente) { errEl.textContent = 'CPF/CNPJ não encontrado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR'; return; }
 
-    // Tentar login com email se existir, ou com CPF como email alternativo
-    var emailParaLogin = cliente.email || (cpf + '@sememail.com.br');
-    
-    var auth = await sb.auth.signInWithPassword({ email: emailParaLogin, password: senha });
+    // Tentar login com email se existir, ou com o documento como email alternativo
+    var candidatos = [];
+    if (cliente.email) candidatos.push(cliente.email);
+    var emailAlternativo = documento + '@sememail.com.br';
+    if (candidatos.indexOf(emailAlternativo) === -1) candidatos.push(emailAlternativo);
+
+    var auth = null;
+    for (var i = 0; i < candidatos.length; i++) {
+      auth = await sb.auth.signInWithPassword({ email: candidatos[i], password: senha });
+      if (!auth.error) break;
+    }
     if (auth.error) {
       var msg = auth.error.message || '';
-      var display = 'CPF ou senha incorretos.';
+      var display = 'CPF/CNPJ ou senha incorretos.';
       if (msg.includes('Email not confirmed') || msg.includes('not confirmed')) {
         display = 'E-mail ainda não confirmado. Verifique sua caixa de entrada.';
       } else if (msg.includes('Invalid login')) {
-        display = 'CPF ou senha incorretos. Se ainda não tem conta, clique em "Primeiro acesso".';
+        display = 'CPF/CNPJ ou senha incorretos. Se ainda não tem conta, clique em "Primeiro acesso".';
       }
       errEl.innerHTML = display + ' <a href="#/cadastro" style="color:#1565C0;text-decoration:underline">Criar conta</a>';
       errEl.classList.remove('hidden');
@@ -203,14 +217,14 @@ async function handleLogin(e) {
 
 async function handleAdminLogin(e) {
   e.preventDefault();
-  var cpf = document.getElementById('adminCpfInput').value.replace(/\D/g, '');
+  var documento = document.getElementById('adminCpfInput').value.replace(/\D/g, '');
   var senha = document.getElementById('adminSenhaInput').value;
   var errEl = document.getElementById('loginError');
   var btn = document.getElementById('loginBtn');
 
   errEl.classList.add('hidden');
-  if (!cpf || !senha) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
-  if (cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
+  if (!documento || !senha) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
+  if (!documentoValido(documento)) { errEl.textContent = 'CPF/CNPJ inválido'; errEl.classList.remove('hidden'); return; }
 
   btn.disabled = true;
   btn.textContent = 'Entrando...';
@@ -219,43 +233,51 @@ async function handleAdminLogin(e) {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão. Tente novamente.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENTRAR COMO ADMIN'; return; }
 
-    // Buscar e-mail do administrador por CPF em admin_usuarios ou clientes
+    // Buscar e-mail do administrador por CPF/CNPJ em admin_usuarios ou clientes
     var adminEmail = null;
-    var { data: adminReg } = await sb.from('admin_usuarios').select('email, ativo').eq('cpf', cpf).eq('ativo', true).maybeSingle();
+    var { data: adminReg } = await sb.from('admin_usuarios').select('email, ativo').eq('cpf', documento).eq('ativo', true).maybeSingle();
     if (adminReg && adminReg.email) {
       adminEmail = adminReg.email;
     } else {
-      var { data: clienteReg } = await sb.from('clientes').select('email').eq('cpf_cnpj', cpf).maybeSingle();
+      var { data: clienteReg } = await sb.from('clientes').select('email').eq('cpf_cnpj', documento).maybeSingle();
       if (clienteReg && clienteReg.email) {
         adminEmail = clienteReg.email;
       }
     }
 
-    // Se não tiver email, usar CPF como email alternativo
+    // Se não tiver email, usar o documento como email alternativo
     if (!adminEmail) {
-      var { data: adminReg } = await sb.from('admin_usuarios').select('ativo').eq('cpf', cpf).eq('ativo', true).maybeSingle();
+      var { data: adminReg } = await sb.from('admin_usuarios').select('ativo').eq('cpf', documento).eq('ativo', true).maybeSingle();
       if (adminReg) {
-        adminEmail = cpf + '@sememail.com.br';
+        adminEmail = documento + '@sememail.com.br';
       } else {
-        var { data: clienteReg } = await sb.from('clientes').select('id').eq('cpf_cnpj', cpf).maybeSingle();
+        var { data: clienteReg } = await sb.from('clientes').select('id').eq('cpf_cnpj', documento).maybeSingle();
         if (clienteReg) {
-          adminEmail = cpf + '@sememail.com.br';
+          adminEmail = documento + '@sememail.com.br';
         }
       }
     }
 
     if (!adminEmail) {
-      errEl.textContent = 'CPF de administrador não encontrado ou inativo.';
+      errEl.textContent = 'CPF/CNPJ de administrador não encontrado ou inativo.';
       errEl.classList.remove('hidden');
       btn.disabled = false;
       btn.textContent = 'ENTRAR COMO ADMIN';
       return;
     }
 
-    var auth = await sb.auth.signInWithPassword({ email: adminEmail, password: senha });
+    var candidatos = [adminEmail];
+    var emailAlternativo = documento + '@sememail.com.br';
+    if (candidatos.indexOf(emailAlternativo) === -1) candidatos.push(emailAlternativo);
+
+    var auth = null;
+    for (var i = 0; i < candidatos.length; i++) {
+      auth = await sb.auth.signInWithPassword({ email: candidatos[i], password: senha });
+      if (!auth.error) break;
+    }
     if (auth.error) {
       var msg = auth.error.message || '';
-      var display = 'CPF ou senha incorretos.';
+      var display = 'CPF/CNPJ ou senha incorretos.';
       if (msg.includes('Email not confirmed') || msg.includes('not confirmed')) {
         display = 'E-mail do administrador não confirmado. Confirme o e-mail ou execute o SQL de liberação no Supabase.';
       }
@@ -293,9 +315,9 @@ function renderCadastro() {
     '<div class="app-bar"><button class="btn-icon" onclick="navigate(\'#/login\')">&#8592;</button><span class="title">Primeiro Acesso</span></div>' +
     '<div class="main-content">' +
     '<h2 style="margin-bottom:8px">Cadastre sua senha</h2>' +
-    '<p style="color:#757575;margin-bottom:24px">Informe seu CPF para criar sua conta. Email é opcional.</p>' +
+    '<p style="color:#757575;margin-bottom:24px">Informe seu CPF ou CNPJ para criar sua conta. Email é opcional.</p>' +
     '<form id="cadastroForm">' +
-      '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF</label><input type="text" id="cadCpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
+      '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF ou CNPJ</label><input type="text" id="cadCpfInput" class="form-input" placeholder="CPF ou CNPJ" maxlength="18" inputmode="numeric"></div>' +
       '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Email (opcional)</label><input type="email" id="cadEmailInput" class="form-input" placeholder="seu@email.com"></div>' +
       '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nova Senha</label><div class="password-wrapper"><input type="password" id="cadSenhaInput" class="form-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'cadSenhaInput\', this)" title="Mostrar senha">👁️</button></div></div>' +
       '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Confirmar Senha</label><div class="password-wrapper"><input type="password" id="cadConfirmaInput" class="form-input" placeholder="Repita a senha" autocomplete="new-password"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'cadConfirmaInput\', this)" title="Mostrar senha">👁️</button></div></div>' +
@@ -306,7 +328,7 @@ function renderCadastro() {
     '<button class="link" onclick="navigate(\'#/login\')">Já tem conta? Faça login</button>' +
     '</div>';
 
-  document.getElementById('cadCpfInput').addEventListener('input', function() { this.value = formatarCpf(this.value); });
+  document.getElementById('cadCpfInput').addEventListener('input', function() { this.value = formatarDocumento(this.value); });
   document.getElementById('cadastroForm').addEventListener('submit', handleCadastro);
 }
 
@@ -317,9 +339,9 @@ function renderEsqueciSenha() {
     '<div class="main-content">' +
       '<div class="card">' +
         '<h2 style="margin-bottom:8px">Recuperar senha</h2>' +
-        '<p style="color:#757575;margin-bottom:24px">Informe seu CPF para receber um link de redefinição de senha no e-mail cadastrado.</p>' +
+        '<p style="color:#757575;margin-bottom:24px">Informe seu CPF ou CNPJ para receber um link de redefinição de senha no e-mail cadastrado.</p>' +
         '<form id="esqueciSenhaForm">' +
-          '<div class="form-group"><label class="form-label">CPF</label><input type="text" id="esqueciCpfInput" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
+          '<div class="form-group"><label class="form-label">CPF ou CNPJ</label><input type="text" id="esqueciCpfInput" class="form-input" placeholder="CPF ou CNPJ" maxlength="18" inputmode="numeric"></div>' +
           '<div id="esqueciError" class="alert alert-error hidden"></div>' +
           '<div id="esqueciSuccess" class="alert alert-success hidden"></div>' +
           '<button type="submit" id="esqueciBtn" class="btn btn-primary">ENVIAR LINK</button>' +
@@ -329,14 +351,14 @@ function renderEsqueciSenha() {
     '</div>';
 
   document.getElementById('esqueciCpfInput').addEventListener('input', function() {
-    this.value = formatarCpf(this.value);
+    this.value = formatarDocumento(this.value);
   });
   document.getElementById('esqueciSenhaForm').addEventListener('submit', handleEsqueciSenha);
 }
 
 async function handleEsqueciSenha(e) {
   e.preventDefault();
-  var cpf = document.getElementById('esqueciCpfInput').value.replace(/\D/g, '');
+  var documento = document.getElementById('esqueciCpfInput').value.replace(/\D/g, '');
   var errEl = document.getElementById('esqueciError');
   var okEl = document.getElementById('esqueciSuccess');
   var btn = document.getElementById('esqueciBtn');
@@ -344,7 +366,7 @@ async function handleEsqueciSenha(e) {
   errEl.classList.add('hidden');
   okEl.classList.add('hidden');
 
-  if (!cpf || cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
+  if (!documento || !documentoValido(documento)) { errEl.textContent = 'CPF/CNPJ inválido'; errEl.classList.remove('hidden'); return; }
 
   btn.disabled = true;
   btn.textContent = 'Enviando...';
@@ -353,10 +375,10 @@ async function handleEsqueciSenha(e) {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
 
-    var { data: clientesList } = await sb.from('clientes').select('id, email, nome').eq('cpf_cnpj', cpf);
+    var { data: clientesList } = await sb.from('clientes').select('id, email, nome').eq('cpf_cnpj', documento);
     var cliente = clientesList && clientesList.length > 0 ? clientesList.find(function(c) { return c.email; }) || clientesList[0] : null;
 
-    if (!cliente) { errEl.textContent = 'CPF não encontrado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
+    if (!cliente) { errEl.textContent = 'CPF/CNPJ não encontrado'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'ENVIAR LINK'; return; }
     if (!cliente.email) { 
       errEl.textContent = 'Cliente sem e-mail cadastrado. Não é possível recuperar senha sem e-mail. Procure a recepção para cadastrar um e-mail.';
       errEl.classList.remove('hidden');
@@ -477,7 +499,7 @@ async function handleRedefinirSenha(e) {
 
 async function handleCadastro(e) {
   e.preventDefault();
-  var cpf = document.getElementById('cadCpfInput').value.replace(/\D/g, '');
+  var documento = document.getElementById('cadCpfInput').value.replace(/\D/g, '');
   var email = document.getElementById('cadEmailInput').value.trim().toLowerCase();
   var senha = document.getElementById('cadSenhaInput').value;
   var confirma = document.getElementById('cadConfirmaInput').value;
@@ -488,8 +510,8 @@ async function handleCadastro(e) {
   errEl.classList.add('hidden');
   okEl.classList.add('hidden');
 
-  if (!cpf || !senha || !confirma) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
-  if (cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
+  if (!documento || !senha || !confirma) { errEl.textContent = 'Preencha todos os campos'; errEl.classList.remove('hidden'); return; }
+  if (!documentoValido(documento)) { errEl.textContent = 'CPF/CNPJ inválido'; errEl.classList.remove('hidden'); return; }
   if (senha.length < 6) { errEl.textContent = 'Senha deve ter pelo menos 6 caracteres'; errEl.classList.remove('hidden'); return; }
   if (senha !== confirma) { errEl.textContent = 'As senhas não conferem'; errEl.classList.remove('hidden'); return; }
 
@@ -500,12 +522,12 @@ async function handleCadastro(e) {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
 
-    var { data: clientesList } = await sb.from('clientes').select('id, email, cpf_cnpj').eq('cpf_cnpj', cpf);
+    var { data: clientesList } = await sb.from('clientes').select('id, email, cpf_cnpj').eq('cpf_cnpj', documento);
     var cliente = clientesList && clientesList.length > 0 ? clientesList.find(function(c) { return c.email; }) || clientesList[0] : null;
-    if (!cliente) { errEl.textContent = 'CPF não encontrado. Procure a recepção.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
+    if (!cliente) { errEl.textContent = 'CPF/CNPJ não encontrado. Procure a recepção.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR'; return; }
 
-    // Usar email informado ou CPF como email alternativo se não houver email
-    var emailFinal = cliente.email || email || (cpf + '@sememail.com.br');
+    // Usar email informado ou o documento como email alternativo se não houver email
+    var emailFinal = cliente.email || email || (documento + '@sememail.com.br');
 
     var auth = await sb.auth.signUp({ email: emailFinal, password: senha });
 

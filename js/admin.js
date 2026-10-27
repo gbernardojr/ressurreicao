@@ -271,7 +271,7 @@ function renderAdminMensalidades() {
         '</div>' +
         '<button class="btn-icon" onclick="renderAdminDashboard()" style="color:#fff;font-size:20px" title="Nova consulta">&#x2716;</button>' +
       '</div>' +
-      (cliente.email ?
+      ((cliente.email || cliente.cpf_cnpj) ?
         '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2)">' +
           '<button class="btn" onclick="adminCriarContaAuth()" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;width:100%">&#128273; Criar conta de acesso para este cliente</button>' +
           '<div id="adminContaAuthResult" style="margin-top:8px;font-size:13px"></div>' +
@@ -860,10 +860,13 @@ async function adminCriarContaAuth() {
   var resultEl = document.getElementById('adminContaAuthResult');
   if (!cliente || !resultEl) return;
 
-  if (!cliente.email) {
-    resultEl.innerHTML = '<span style="color:#FFCDD2">Cliente sem email cadastrado.</span>';
+  var documento = String(cliente.cpf_cnpj == null ? '' : cliente.cpf_cnpj).replace(/\D/g, '');
+  var emailConta = cliente.email || (documento ? documento + '@sememail.com.br' : '');
+  if (!emailConta) {
+    resultEl.innerHTML = '<span style="color:#FFCDD2">Cliente sem email e sem CPF/CNPJ cadastrado.</span>';
     return;
   }
+  var loginExibicao = documento ? formatarCpfCnpj(documento) : cliente.email;
 
   resultEl.innerHTML = '<span style="color:#FFF9C4">Criando conta...</span>';
 
@@ -873,12 +876,12 @@ async function adminCriarContaAuth() {
 
     var tempSenha = 'Ress@' + new Date().getFullYear();
 
-    var auth = await sb.auth.signUp({ email: cliente.email, password: tempSenha });
+    var auth = await sb.auth.signUp({ email: emailConta, password: tempSenha });
 
     if (auth.error) {
       var msg = auth.error.message || '';
       if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
-        resultEl.innerHTML = '<span style="color:#FFF9C4">Conta já existe para este email.<br>O cliente pode usar <b>"Esqueci minha senha"</b> para redefinir.</span>';
+        resultEl.innerHTML = '<span style="color:#FFF9C4">Conta já existe para este cliente.<br>Ele pode usar <b>"Esqueci minha senha"</b> para redefinir.</span>';
       } else {
         resultEl.innerHTML = '<span style="color:#FFCDD2">Erro: ' + msg + '</span>';
       }
@@ -888,9 +891,9 @@ async function adminCriarContaAuth() {
     resultEl.innerHTML =
       '<div style="background:rgba(255,255,255,0.15);padding:12px;border-radius:8px;margin-top:4px">' +
         '<div style="font-weight:700;margin-bottom:8px">&#9989; Conta criada com sucesso!</div>' +
-        '<div><b>Email:</b> ' + cliente.email + '</div>' +
+        '<div><b>Login:</b> ' + loginExibicao + '</div>' +
         '<div><b>Senha temporária:</b> ' + tempSenha + '</div>' +
-        '<div style="margin-top:8px;font-size:12px;opacity:0.8">Informe estos dados ao cliente. Ele pode trocar a senha depois em "Esqueci minha senha".</div>' +
+        '<div style="margin-top:8px;font-size:12px;opacity:0.8">Informe estes dados ao cliente. Ele pode trocar a senha depois em "Esqueci minha senha".</div>' +
       '</div>';
   } catch (err) {
     resultEl.innerHTML = '<span style="color:#FFCDD2">Erro ao conectar.</span>';
@@ -907,7 +910,7 @@ async function renderAdminGerenciar() {
         '<h3 style="font-size:16px;margin-bottom:12px">Novo Administrador</h3>' +
         '<p style="font-size:13px;color:#757575;margin-bottom:12px">Cadastre os dados do novo administrador abaixo. O cadastro de administradores é independente do cadastro de clientes.</p>' +
         '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Nome do Administrador</label><input type="text" id="adminNovoNome" class="form-input" placeholder="Nome completo"></div>' +
-        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF do Administrador</label><input type="text" id="adminNovoCpf" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric"></div>' +
+        '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">CPF ou CNPJ do Administrador</label><input type="text" id="adminNovoCpf" class="form-input" placeholder="CPF ou CNPJ" maxlength="18" inputmode="numeric"></div>' +
         '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Email do Administrador</label><input type="email" id="adminNovoEmail" class="form-input" placeholder="email@exemplo.com"></div>' +
         '<div class="form-group"><label style="display:block;font-size:14px;color:#757575;margin-bottom:4px">Senha temporária</label><div class="password-wrapper"><input type="password" id="adminNovoSenha" class="form-input" placeholder="Mínimo 6 caracteres"><button type="button" class="btn-toggle-senha" onclick="toggleSenha(\'adminNovoSenha\', this)" title="Mostrar senha">👁️</button></div></div>' +
         '<div id="adminNovoError" class="hidden" style="color:#D32F2F;background:#FFEBEE;padding:12px;border-radius:8px;margin-bottom:12px;font-size:14px"></div>' +
@@ -916,7 +919,7 @@ async function renderAdminGerenciar() {
       '</div>' +
     '</div>';
 
-  document.getElementById('adminNovoCpf').addEventListener('input', function() { this.value = formatarCpf(this.value); });
+  document.getElementById('adminNovoCpf').addEventListener('input', function() { this.value = formatarCpfCnpj(this.value); });
 
   await carregarListaAdmins();
 }
@@ -942,7 +945,7 @@ async function carregarListaAdmins() {
           '<div style="flex:1">' +
             '<div style="font-weight:600">' + (a.nome || '-') + '</div>' +
             '<div style="font-size:13px;color:#757575">' + (a.email || '-') + '</div>' +
-            '<div style="font-size:13px;color:#757575">' + (a.cpf ? formatarCpf(a.cpf) : 'Sem CPF') + '</div>' +
+            '<div style="font-size:13px;color:#757575">' + (a.cpf ? formatarCpfCnpj(a.cpf) : 'Sem CPF/CNPJ') + '</div>' +
             '<div style="font-size:12px;color:' + statusCor + ';font-weight:600">' + statusTxt + '</div>' +
           '</div>' +
           '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' +
@@ -962,7 +965,7 @@ async function carregarListaAdmins() {
 
 async function handleAdminCadastrarNovo() {
   var nome = document.getElementById('adminNovoNome').value.trim();
-  var cpf = document.getElementById('adminNovoCpf').value.replace(/\D/g, '');
+  var documento = document.getElementById('adminNovoCpf').value.replace(/\D/g, '');
   var email = document.getElementById('adminNovoEmail').value.trim().toLowerCase();
   var senha = document.getElementById('adminNovoSenha').value;
   var errEl = document.getElementById('adminNovoError');
@@ -973,7 +976,7 @@ async function handleAdminCadastrarNovo() {
   okEl.classList.add('hidden');
 
   if (!nome) { errEl.textContent = 'Informe o nome do administrador'; errEl.classList.remove('hidden'); return; }
-  if (!cpf || cpf.length !== 11) { errEl.textContent = 'CPF inválido'; errEl.classList.remove('hidden'); return; }
+  if (!documento || (documento.length !== 11 && documento.length !== 14)) { errEl.textContent = 'CPF/CNPJ inválido'; errEl.classList.remove('hidden'); return; }
   if (!email || !email.includes('@')) { errEl.textContent = 'Email inválido'; errEl.classList.remove('hidden'); return; }
   if (!senha || senha.length < 6) { errEl.textContent = 'Senha deve ter pelo menos 6 caracteres'; errEl.classList.remove('hidden'); return; }
 
@@ -984,8 +987,8 @@ async function handleAdminCadastrarNovo() {
     var sb = getSupabase();
     if (!sb) { errEl.textContent = 'Erro de conexão.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR ADMIN'; return; }
 
-    var { data: existente } = await sb.from('admin_usuarios').select('id').or('cpf.eq.' + cpf + ',email.eq.' + email).maybeSingle();
-    if (existente) { errEl.textContent = 'Este CPF ou E-mail já é administrador.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR ADMIN'; return; }
+    var { data: existente } = await sb.from('admin_usuarios').select('id').or('cpf.eq.' + documento + ',email.eq.' + email).maybeSingle();
+    if (existente) { errEl.textContent = 'Este CPF/CNPJ ou E-mail já é administrador.'; errEl.classList.remove('hidden'); btn.disabled = false; btn.textContent = 'CADASTRAR ADMIN'; return; }
 
     var { error: authErr } = await sb.auth.signUp({ email: email, password: senha });
     if (authErr) {
@@ -1005,7 +1008,7 @@ async function handleAdminCadastrarNovo() {
     var { error: insertErr } = await sb.from('admin_usuarios').insert({
       nome: nome,
       email: email,
-      cpf: cpf,
+      cpf: documento,
       ativo: true
     });
 
