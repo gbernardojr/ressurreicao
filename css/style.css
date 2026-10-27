@@ -263,6 +263,7 @@ body {
   height: auto;
   object-fit: contain;
   margin-bottom: 16px;
+  border-radius: 12px;
 }
 
 .login-header h1 {
@@ -315,6 +316,7 @@ body {
   height: auto;
   object-fit: contain;
   margin-bottom: 16px;
+  border-radius: 16px;
 }
 
 .home-welcome {
