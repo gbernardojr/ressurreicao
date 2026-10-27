@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ressurricao-v6';
+const CACHE_NAME = 'ressurricao-v7';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -12,10 +12,12 @@ const STATIC_ASSETS = [
   '/js/mensalidades.js',
   '/js/boleto.js',
   '/js/boleto-utils.js',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg',
-  '/icons/icon-maskable-192.svg',
-  '/icons/icon-maskable-512.svg',
+  '/icons/iconeapp.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-192.png',
+  '/icons/icon-maskable-512.png',
+  '/icons/icon-180.png',
   '/images/logo.jpg',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
   'https://cdn.jsdelivr.net/npm/jsbarcode@3/dist/JsBarcode.all.min.js',
