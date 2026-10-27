@@ -93,6 +93,29 @@ function formatCurrency(v) {
   return isNaN(n) ? 'R$ 0,00' : 'R$ ' + n.toFixed(2).replace('.', ',');
 }
 
+function escaparLike(valor) {
+  return String(valor == null ? '' : valor)
+    .replace(/\\/g, '\\\\')
+    .replace(/%/g, '\\%')
+    .replace(/_/g, '\\_');
+}
+
+// O Auth devolve o e-mail em minúsculas; o cadastro pode ter maiúsculas.
+async function buscarPorEmail(sb, tabela, email, somenteAtivo) {
+  if (!email) return null;
+
+  var exata = sb.from(tabela).select().eq('email', email);
+  if (somenteAtivo) exata = exata.eq('ativo', true);
+  var resultado = await exata.limit(1).maybeSingle();
+  if (resultado && resultado.data) return resultado.data;
+
+  var insensivel = sb.from(tabela).select().ilike('email', escaparLike(email));
+  if (somenteAtivo) insensivel = insensivel.eq('ativo', true);
+  var resposta = await insensivel;
+  var linhas = resposta ? resposta.data : null;
+  return linhas && linhas.length > 0 ? linhas[0] : null;
+}
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(function(s) { s.classList.add('hidden'); });
   var el = document.getElementById(id);
@@ -110,15 +133,14 @@ async function carregarDadosCliente() {
     var admin = null;
     try {
       if (user.email) {
-        var adminByEmail = await sb.from('admin_usuarios').select().eq('email', user.email).eq('ativo', true).maybeSingle();
-        if (adminByEmail && adminByEmail.data) admin = adminByEmail.data;
+        admin = await buscarPorEmail(sb, 'admin_usuarios', user.email, true);
       }
 
       if (!admin) {
         var cpfCnpj = null;
         try {
-          var authCliente = await sb.from('clientes').select('cpf_cnpj').eq('email', user.email).maybeSingle();
-          cpfCnpj = authCliente.data ? authCliente.data.cpf_cnpj : null;
+          var authCliente = await buscarPorEmail(sb, 'clientes', user.email);
+          cpfCnpj = authCliente ? authCliente.cpf_cnpj : null;
         } catch (e) {}
 
         // Se não encontrar por email e o email for um email alternativo, extrair CPF do email
@@ -147,8 +169,7 @@ async function carregarDadosCliente() {
     } catch (e) {}
 
     // Tentar buscar cliente por email, ou por CPF se o email for um email alternativo
-    var clienteResult = await sb.from('clientes').select().eq('email', user.email).maybeSingle();
-    var cliente = clienteResult ? clienteResult.data : null;
+    var cliente = await buscarPorEmail(sb, 'clientes', user.email);
     
     // Se não encontrar por email e o email for um email alternativo (cpf@sememail.com.br),
     // tentar buscar pelo CPF

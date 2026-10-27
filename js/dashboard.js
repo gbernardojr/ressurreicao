@@ -11,7 +11,13 @@ function renderDashboard() {
 
   var content = document.getElementById('dashContent');
   if (!AppState.cliente) {
-    content.innerHTML = '<div class="spinner"></div>';
+    content.innerHTML =
+      '<div class="card" style="text-align:center;padding:24px">' +
+        '<div style="font-size:40px;margin-bottom:12px">&#128100;</div>' +
+        '<h2 style="font-size:18px;margin-bottom:8px">Cadastro n\u00e3o encontrado</h2>' +
+        '<p style="color:#757575;font-size:14px;margin-bottom:16px">N\u00e3o localizamos seus dados de cliente. Procure a recep\u00e7\u00e3o do cemit\u00e9rio.</p>' +
+        '<button class="btn btn-primary" onclick="handleLogout()">Sair</button>' +
+      '</div>';
     return;
   }
 
