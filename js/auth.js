@@ -98,6 +98,7 @@ function renderLogin() {
         '<button class="link" onclick="navigate(\'#/esqueci-senha\')" style="margin-top:4px">Esqueci minha senha</button>' +
         '<button class="link" onclick="navigate(\'#/cadastro\')">Primeiro acesso? Cadastre sua senha</button>' +
         '<button class="link" onclick="navigate(\'#/admin-login\')" style="margin-top:8px;font-weight:600">🔒 Área Restrita</button>' +
+        '<a class="link" href="/privacidade" target="_blank" rel="noopener" style="display:block;margin-top:12px;font-size:12px">Política de Privacidade</a>' +
         '<div id="installArea" class="install-area' + (estaInstalado() && !deferredPrompt ? ' hidden' : '') + '">' +
           '<button class="link" id="installLink" onclick="handleInstallClick()">Instalar o sistema no dispositivo local</button>' +
         '</div>' +

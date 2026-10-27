@@ -1,7 +1,8 @@
-const CACHE_NAME = 'ressurricao-v7';
+const CACHE_NAME = 'ressurricao-v8';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/privacidade',
   '/css/style.css',
   '/js/supabase.js',
   '/js/app.js',
